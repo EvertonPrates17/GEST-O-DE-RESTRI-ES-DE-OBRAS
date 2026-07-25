@@ -285,6 +285,7 @@
 <header>
   <h1><span class="tag">LPS</span> Gestão de Restrições · Quadro da Obra</h1>
   <div class="tools">
+    <span class="count" id="cloudStatus" style="color:#9fb0bf;margin-right:8px">☁︎ …</span>
     <span class="count" id="hmeta" style="color:#9fb0bf;margin-right:6px"></span>
     <button onclick="exportJSON()">Exportar JSON</button>
     <button onclick="importJSON()">Importar</button>
@@ -389,6 +390,7 @@
 </div>
 <input type="file" id="fileInput" accept="application/json" style="display:none">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SEED = {
   "projeto": "Sistema Inteligente de Gestão de Restrições",
@@ -1218,6 +1220,12 @@ const SEED = {
   ]
 };
 const KEY='restricoes_obra_v2';
+/* ===== Supabase (nuvem compartilhada) ===== */
+const SUPA_URL='https://oowsyswppbllbesrfjvc.supabase.co';
+const SUPA_KEY='sb_publishable_RqrIigN1Bz6UU-r7SMXYyA_5PPEQWV1';
+const CLIENT_ID='c'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+let supa=null,applyingRemote=false,pushTimer=null,lastStamp=null;
+try{if(window.supabase&&SUPA_URL)supa=window.supabase.createClient(SUPA_URL,SUPA_KEY);}catch(e){console.warn('Supabase init',e);}
 const TIPO_LAB={engenharia:"Engenharia",obra:"OBRA - CIVIL",suprimentos:"Suprimentos",obra_mecanica:"OBRA - MECÂNICA"};
 const TIPO_CLS={engenharia:"eng",obra:"obra",suprimentos:"sup",obra_mecanica:"mec"};
 const COL={engenharia:"var(--eng)",obra:"var(--obra)",suprimentos:"var(--sup)",obra_mecanica:"var(--mec)"};
@@ -1256,7 +1264,8 @@ function load(){let st;try{const raw=localStorage.getItem(KEY);if(raw)st=JSON.pa
   if(!st)st=seedState();return joaoEudesMec(st);}
 let warnedSave=false;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){console.warn(e);
-  if(!warnedSave){warnedSave=true;showToast('Aviso: este visualizador não permite salvar. Baixe o arquivo e abra direto no navegador para persistir os dados.',null,null,8000);}}}
+  if(!warnedSave){warnedSave=true;showToast('Aviso: armazenamento local indisponível — usando apenas a nuvem.',null,null,8000);}}
+  cloudPush();}
 let state=load();let R=state.restricoes;
 let bloqueia={};
 function recalcBloqueia(){bloqueia={};R.forEach(r=>r.depende.forEach(d=>{(bloqueia[d]=bloqueia[d]||[]).push(r.id)}));}
@@ -2087,11 +2096,53 @@ function renderPMO(){
 function pmoRisk(p,i){ // filtra por criticidade aproximada abrindo a lista
   goFilter({view:'lista',sort:'alerta'});
 }
+function showCloud(s){const el=document.getElementById('cloudStatus');if(!el)return;
+  const map={conectando:['☁︎ conectando…','#9fb0bf'],ok:['☁︎ nuvem conectada','#7ac142'],sync:['☁︎ sincronizado','#7ac142'],salvando:['☁︎ salvando…','#9fb0bf'],erro:['☁︎ sem conexão · modo local','#f5a623'],local:['☁︎ modo local (sem nuvem)','#9fb0bf']};
+  const m=map[s]||map.local;el.textContent=m[0];el.style.color=m[1];}
+function adoptState(obj){if(!obj||typeof obj!=='object'||!obj.restricoes)return false;
+  obj.restricoes=obj.restricoes.map(migrate);obj=joaoEudesMec(obj);
+  state=obj;R=state.restricoes;recalcBloqueia();
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}return true;}
+function cloudPush(){if(!supa||applyingRemote)return;
+  clearTimeout(pushTimer);showCloud('salvando');
+  pushTimer=setTimeout(async()=>{
+    try{state._lastWriter=CLIENT_ID;const stamp=new Date().toISOString();
+      const {error}=await supa.from('quadro').upsert({id:'principal',dados:state,atualizado_em:stamp});
+      if(error){console.warn('push',error);showCloud('erro');}else{lastStamp=stamp;showCloud('ok');}
+    }catch(e){console.warn(e);showCloud('erro');}
+  },700);}
+async function cloudInit(){
+  if(!supa){showCloud('local');return;}
+  showCloud('conectando');
+  try{
+    const {data,error}=await supa.from('quadro').select('dados,atualizado_em').eq('id','principal').single();
+    if(error){console.warn('init',error);showCloud('erro');return;}
+    const cloud=data&&data.dados;
+    if(cloud&&cloud.restricoes&&cloud.restricoes.length){
+      applyingRemote=true;adoptState(cloud);applyingRemote=false;lastStamp=data.atualizado_em;refreshAll();
+    }else{ // nuvem vazia -> popula com o estado atual
+      const stamp=new Date().toISOString();state._lastWriter=CLIENT_ID;
+      await supa.from('quadro').upsert({id:'principal',dados:state,atualizado_em:stamp});lastStamp=stamp;
+    }
+    showCloud('ok');
+  }catch(e){console.warn(e);showCloud('erro');}}
+async function cloudPoll(){
+  if(!supa||editing)return; // nao atropela edicao aberta
+  try{
+    const {data,error}=await supa.from('quadro').select('dados,atualizado_em').eq('id','principal').single();
+    if(error||!data||data.atualizado_em===lastStamp)return;
+    const nd=data.dados;lastStamp=data.atualizado_em;
+    if(!nd||nd._lastWriter===CLIENT_ID)return; // eco da propria escrita
+    applyingRemote=true;const ok=adoptState(nd);applyingRemote=false;
+    if(ok){refreshAll();showCloud('sync');}
+  }catch(e){}}
 function refreshAll(){fillSelects();renderPMO();renderPainel();renderKanban();renderLista();renderArquivo();renderHoje();
   document.getElementById('hmeta').textContent=R.filter(r=>!r.concluida).length+' no quadro · '+R.filter(r=>r.concluida).length+' concluídas';
   document.getElementById('foot').textContent=(state.fonte||'')+' — dados salvos localmente. Use Exportar JSON para backup.';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
 refreshAll();
+cloudInit();
+setInterval(cloudPoll,8000);
 </script>
 </body>
 </html>
