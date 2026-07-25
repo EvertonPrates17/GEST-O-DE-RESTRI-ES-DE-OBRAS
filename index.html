@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Restrições · Quadro da Obra</title>
+<style>
+  :root{
+    --eng:#3b9dd6;--eng-bg:#e8f4fb;--sup:#f5a623;--sup-bg:#fdf2df;--obra:#ec4899;--obra-bg:#fce7f2;--mec:#7c3aed;--mec-bg:#f0eafe;--area:#e6d800;
+    --ink:#12181f;--ink-2:#4a5763;--line:#e2e7ec;--bg:#f4f6f8;--panel:#fff;--accent:#0f4c81;
+    --ok:#1f9d55;--warn:#f59e0b;--urg:#ea6d0b;--crit:#dc2626;
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono','Roboto Mono',Menlo,Consolas,monospace;
+    --sans:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45;text-transform:uppercase}
+  /* tudo em caixa alta, inclusive o que for digitado */
+  input,select,textarea,button,option{text-transform:uppercase}
+  input::placeholder,textarea::placeholder{text-transform:uppercase}
+  /* datas e IDs nao precisam de transform, mas nao sao afetados negativamente */
+  header{background:var(--ink);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  header h1{font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px}
+  header h1 .tag{font-family:var(--mono);font-size:10px;background:var(--accent);padding:3px 7px;border-radius:4px}
+  header .tools{display:flex;gap:8px;align-items:center}
+  header .tools button{font-family:var(--sans);font-size:12px;font-weight:600;padding:7px 12px;border-radius:6px;border:1px solid #33414f;background:#1c2530;color:#dbe4ec;cursor:pointer}
+  header .tools button:hover{background:#26313d}
+  header .tools button.pri{background:var(--ok);border-color:var(--ok);color:#fff}
+  nav{display:flex;gap:2px;background:var(--panel);padding:0 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  nav button{background:none;border:none;padding:14px 18px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+  nav button:hover{color:var(--ink)}
+  main{padding:24px;max-width:1500px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+
+  .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+  .alert{border-left:3px solid;padding:10px 14px;border-radius:4px;font-size:13px;background:var(--panel)}
+  .alert.crit{border-color:var(--crit);background:#fef2f2}.alert.warn{border-color:var(--warn);background:#fffbeb}.alert.info{border-color:var(--accent);background:#eff6ff}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .kpi .n{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1}
+  .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-top:8px}
+  .kpi.eng .n{color:var(--eng)}.kpi.obra .n{color:var(--obra)}.kpi.sup .n{color:var(--sup)}.kpi.crit .n{color:var(--crit)}.kpi.warn .n{color:var(--urg)}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px}
+  .card h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:14px;font-weight:700}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+  .bar-row .lab{width:135px;flex-shrink:0}
+  .bar-track{flex:1;height:18px;background:var(--bg);border-radius:3px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px}
+  .bar-row .val{font-family:var(--mono);font-size:12px;width:26px;text-align:right;color:var(--ink-2)}
+  .kpi.clickable{cursor:pointer;transition:.12s}
+  .kpi.clickable:hover{border-color:var(--accent);box-shadow:0 3px 12px rgba(0,0,0,.1);transform:translateY(-1px)}
+  .bar-row.clk{cursor:pointer;border-radius:4px}
+  .bar-row.clk:hover .lab{color:var(--accent);font-weight:600}
+  .bar-row.clk:hover .bar-fill{filter:brightness(1.08)}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;background:var(--panel);padding:14px;border:1px solid var(--line);border-radius:8px}
+  .filters select,.filters input{font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+  .filters input{min-width:190px}
+  .filters .clear{background:var(--bg);cursor:pointer;font-weight:600;color:var(--ink-2)}
+  .filters .new{background:var(--accent);color:#fff;border-color:var(--accent);cursor:pointer;font-weight:700}
+  .count{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin-left:auto}
+
+  .swim{margin-bottom:28px}
+  .swim-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+  .swim-head .avatar{width:26px;height:26px;border-radius:6px;background:#7ac142;color:#173d00;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .swim-head h2{font-size:15px;font-weight:700}
+  .swim-head .n{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin-left:auto}
+  .areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px}
+  .area-col{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .area-col .area-top{background:linear-gradient(var(--area),#d4c800);color:#3a3600;padding:8px 12px;font-weight:700;font-size:12px;text-transform:uppercase;display:flex;justify-content:space-between}
+  .area-col .stack{padding:10px;display:flex;flex-direction:column;gap:8px}
+  .ticket{border-radius:7px;font-size:13px;background:#fff;border:1px solid var(--line);cursor:pointer;transition:.12s;overflow:hidden}
+  .ticket:hover{box-shadow:0 3px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
+  .ttop{display:flex;align-items:center;gap:8px;padding:6px 9px;color:#fff}
+  .ttop .tid{font-family:var(--mono);font-size:10px;font-weight:600;opacity:.92}
+  .ttop .ttype{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .ttop .tspacer{flex:1}
+  .ttop .tsdot{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.85)}
+  .ttop .okbtn{border:none;background:rgba(255,255,255,.25);color:#fff;width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .ttop .okbtn:hover{background:rgba(255,255,255,.5)}
+  .ticket.eng .ttop{background:var(--eng)}.ticket.obra .ttop{background:var(--obra)}.ticket.sup .ttop{background:var(--sup);color:#3a2a00}.ticket.mec .ttop{background:var(--mec)}
+  .ticket.sup .ttop .okbtn{background:rgba(0,0,0,.14);color:#3a2a00}.ticket.sup .ttop .tsdot{border-color:rgba(0,0,0,.4)}
+  .tbody{padding:9px 11px 11px}
+  .ticket .tt{font-weight:600;margin:0 0 7px;line-height:1.3}
+  .ticket .chips{display:flex;gap:5px;flex-wrap:wrap}
+  .ticket .tmeta{font-size:11px;color:var(--ink-2);margin-top:7px;display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono)}
+  .tprazo{margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;font-weight:600;padding:4px 8px;border-radius:5px;border-left:3px solid}
+  .tprazo .tdias{font-size:10px;opacity:.9}
+  .tstatus{font-size:12px;color:var(--ink-2);background:#f6f8fa;border-left:2px solid #cbd5de;padding:5px 8px;border-radius:4px;margin-bottom:7px;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .pie-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .pie-legend{width:100%;display:flex;flex-direction:column;gap:7px}
+  .pie-legend .lrow{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer;padding:3px 4px;border-radius:5px}
+  .pie-legend .lrow:hover{background:#f3f6f9}
+  .pie-legend .sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+  .pie-legend .lname{flex:1}
+  .pie-legend .lnum{font-family:var(--mono);font-weight:700}
+  .pie-legend .lpct{font-family:var(--mono);color:var(--ink-2);font-size:12px;width:42px;text-align:right}
+  .pie-slice{cursor:pointer;transition:opacity .12s}
+  .pie-slice:hover{opacity:.82}
+  .mr-row{display:flex;align-items:center;gap:9px;font-size:13px;padding:5px 4px;border-radius:5px;cursor:pointer}
+  .mr-row:hover{background:#f3f6f9}
+  .mr-sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+  .mr-name{font-weight:600;width:88px;flex-shrink:0}
+  .mr-state{flex:1;color:var(--ink-2);font-size:12px}
+  .mr-n{font-family:var(--mono);font-weight:700}
+  .tresp{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12px;color:var(--ink)}
+  .tresp .ravatar{width:19px;height:19px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tresp .rname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tresp.vazio{color:#a9b4bf}
+  .tresp.vazio .ravatar{background:#dbe2e8;color:#8b98a5}
+  /* ---- PMO ---- */
+  .pmo-hero{background:linear-gradient(135deg,#12181f,#1c2b3a);color:#fff;border-radius:12px;padding:24px 26px;margin-bottom:20px;display:flex;gap:26px;flex-wrap:wrap;align-items:center}
+  .pmo-hero .diag{flex:1;min-width:280px}
+  .pmo-hero h2{font-size:19px;font-weight:700;margin-bottom:8px;letter-spacing:.01em}
+  .pmo-hero p{font-size:13.5px;line-height:1.55;color:#d3dde6}
+  .pmo-hero .tag{display:inline-block;font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.14);padding:3px 9px;border-radius:5px;margin-bottom:12px;letter-spacing:.04em}
+  .gauge{width:172px;height:172px;flex-shrink:0;position:relative}
+  .gauge .gv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge .gnum{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1}
+  .gauge .glab{font-size:10px;letter-spacing:.08em;color:#c3cfd9;margin-top:4px}
+  .gauge .gclass{font-size:12px;font-weight:700;margin-top:6px;padding:2px 10px;border-radius:20px}
+  .pmo-sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:18px}
+  .pmo-sec h3{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .pmo-sec .sub{font-size:12px;color:var(--ink-2);margin-bottom:16px}
+  .pmo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .kbox{border:1px solid var(--line);border-radius:9px;padding:14px 16px}
+  .kbox .kv{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
+  .kbox .kl{font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
+  .kbox .kd{font-size:12px;color:var(--ink-2);margin-top:8px;line-height:1.45}
+  .crit-item{border-left:3px solid var(--line);padding:11px 14px;margin-bottom:11px;border-radius:0 6px 6px 0;background:#fafbfc}
+  .crit-item.sev-alta{border-color:var(--crit);background:#fef4f4}
+  .crit-item.sev-media{border-color:var(--warn);background:#fffbef}
+  .crit-item.sev-baixa{border-color:var(--ok);background:#f2faf5}
+  .crit-item .ct{font-weight:700;font-size:13.5px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .crit-item .cbadge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.03em}
+  .cbadge.sev-alta{background:#fdd;color:#a31414}.cbadge.sev-media{background:#fef0cf;color:#8a5a00}.cbadge.sev-baixa{background:#d7f0df;color:#15803d}
+  .crit-item .cbody{font-size:12.5px;color:#3a4650;line-height:1.5}
+  .crit-item .cbody b{color:var(--ink)}
+  .rmatrix{display:grid;grid-template-columns:auto repeat(3,1fr);gap:4px;font-size:11px}
+  .rmatrix .rc{padding:9px 6px;text-align:center;border-radius:5px;font-weight:600;display:flex;flex-direction:column;gap:2px;justify-content:center;min-height:52px}
+  .rmatrix .rh{background:#eef2f5;color:var(--ink-2);text-transform:uppercase;letter-spacing:.03em;font-size:10px}
+  .rmatrix .rax{writing-mode:vertical-rl;transform:rotate(180deg)}
+  .rcell{cursor:pointer;transition:.12s}.rcell:hover{filter:brightness(.95);outline:2px solid var(--accent)}
+  .rcell .rn{font-family:var(--mono);font-size:16px;font-weight:700}
+  .rlo{background:#e9f6ee;color:#15803d}.rmd{background:#fff4d6;color:#8a5a00}.rhi{background:#ffe2d1;color:#b5480a}.rex{background:#fdd9d9;color:#a31414}
+  .cpath{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px}
+  .cpath .cnode{background:#eef4fb;border:1px solid #cfe2f3;border-radius:6px;padding:6px 10px;font-family:var(--mono);cursor:pointer}
+  .cpath .cnode:hover{background:#dceaf7}
+  .cpath .carr{color:var(--ink-2);font-weight:700}
+  .prank{list-style:none;counter-reset:pr}
+  .prank li{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+  .prank li:hover{background:#fafbfc}
+  .prank li .pn{counter-increment:pr;font-family:var(--mono);font-weight:700;color:var(--accent);width:22px}
+  .prank li .pbar{flex:1}
+  .prank li .pmeta{font-size:11px;color:var(--ink-2);font-family:var(--mono)}
+  .heatgrid{display:flex;flex-direction:column;gap:5px}
+  .heatrow{display:flex;align-items:center;gap:9px;font-size:12.5px;cursor:pointer;padding:2px 3px;border-radius:5px}
+  .heatrow:hover{background:#f3f6f9}
+  .heatrow .hlab{width:150px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .heatrow .htrack{flex:1;height:16px;background:#f0f3f6;border-radius:3px;overflow:hidden}
+  .heatrow .hfill{height:100%}
+  .heatrow .hn{font-family:var(--mono);font-size:12px;width:66px;text-align:right;color:var(--ink-2)}
+  .plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .plan-tbl th{background:#eef2f5;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2)}
+  .plan-tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .plan-tbl .q{font-weight:700;font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap}
+  .q-win{background:#d7f0df;color:#15803d}.q-big{background:#dbeafe;color:#1e40af}.q-fill{background:#fef0cf;color:#8a5a00}.q-hard{background:#eee;color:#555}
+  .reclist{list-style:none;counter-reset:rec}
+  .reclist li{position:relative;padding:11px 0 11px 40px;border-bottom:1px dashed var(--line);font-size:13px;line-height:1.5}
+  .reclist li::before{counter-increment:rec;content:counter(rec);position:absolute;left:0;top:10px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--mono);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .reclist.esc li::before{background:var(--crit)}
+  .reclist.gest li::before{background:var(--ok)}
+  .reclist li b{color:var(--ink)}
+  .parecer{background:#12181f;color:#e6edf3;border-radius:10px;padding:24px 26px;font-size:13.5px;line-height:1.7}
+  .parecer h3{color:#fff;font-size:14px;letter-spacing:.06em;margin-bottom:14px}
+  .parecer p{margin-bottom:13px;color:#cdd8e2}
+  .parecer .sig{margin-top:18px;padding-top:14px;border-top:1px solid #2a3946;font-size:12px;color:#8fa0b0;font-family:var(--mono)}
+  .parecer .sig{color:#8fa0b0}
+  .trend{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:12px;padding:2px 9px;border-radius:20px}
+  .trend.up{background:#d7f0df;color:#15803d}.trend.flat{background:#eef2f5;color:#556}.trend.down{background:#fdd9d9;color:#a31414}
+  .exec-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .exec-kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px 16px;border-top:3px solid var(--accent)}
+  .exec-kpi.bad{border-top-color:var(--crit)}.exec-kpi.warnk{border-top-color:var(--warn)}.exec-kpi.okk{border-top-color:var(--ok)}
+  .exec-kpi .ev{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1}
+  .exec-kpi .el2{font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
+  .exec-kpi .es{font-size:11px;color:var(--ink-2);margin-top:7px;line-height:1.4}
+  .decis{border-left:4px solid var(--crit);background:#fef4f4;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:10px;font-size:13px;line-height:1.5}
+  .decis.w{border-color:var(--warn);background:#fffbef}
+  .decis b{color:var(--ink)}
+  .acc{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden;background:var(--panel)}
+  .acc>summary{cursor:pointer;padding:15px 20px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);font-weight:700;list-style:none;display:flex;align-items:center;justify-content:space-between}
+  .acc>summary::-webkit-details-marker{display:none}
+  .acc>summary::after{content:"▾";color:var(--ink-2);transition:.2s}
+  .acc[open]>summary::after{transform:rotate(180deg)}
+  .acc>summary:hover{background:#fafbfc}
+  .acc .accbody{padding:0 20px 20px}
+  .acc .accsum{font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink-2);text-transform:none;letter-spacing:0}
+  @media print{nav,header .tools,.filters{display:none}.pmo-sec,.acc{break-inside:avoid}.acc[open]>.accbody,.acc>.accbody{display:block}.acc>summary::after{display:none}}
+  .tprazo.s-ok{background:#eef8f1;color:#14663c;border-color:var(--ok)}
+  .tprazo.s-warn{background:#fff8e6;color:#8a5a00;border-color:var(--warn)}
+  .tprazo.s-urg{background:#fff1e3;color:#a03d00;border-color:var(--urg)}
+  .tprazo.s-crit{background:#fdeaea;color:#a31414;border-color:var(--crit)}
+  .tprazo.s-none{background:#f2f5f8;color:#7a8894;border-color:#c3ccd5}
+  .tprazo.s-done{background:#f1f5f9;color:#64748b;border-color:#94a3b8}
+  .arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .arch{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;opacity:.94}
+  .arch .atop{padding:7px 10px;color:#fff;display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .arch.eng .atop{background:var(--eng)}.arch.obra .atop{background:var(--obra)}.arch.sup .atop{background:var(--sup);color:#3a2a00}.arch.mec .atop{background:var(--mec)}
+  .arch .abody{padding:10px 12px}
+  .arch .att{font-weight:600;margin-bottom:4px}
+  .arch .adate{font-size:11px;color:var(--ink-2);font-family:var(--mono);margin-top:2px}
+  .arch .abtns{margin-top:10px;display:flex;gap:8px}
+  .badge{font-family:var(--mono);font-size:10px;background:var(--accent);color:#fff;border-radius:9px;padding:1px 6px;margin-left:5px}
+  .chip{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600}
+  .chip.eng{background:var(--eng-bg);color:#1a6ca3}.chip.obra{background:var(--obra-bg);color:#b31d6f}.chip.sup{background:var(--sup-bg);color:#a56a00}.chip.mec{background:var(--mec-bg);color:#5b21b6}
+  .chip.seg{background:#fee2e2;color:#b91c1c}.chip.dep{background:#ede9fe;color:#6d28d9}.chip.inf{background:#f1f5f9;color:#64748b}.chip.lib{background:#dcfce7;color:#15803d}
+  .chip.pri{background:#fef3c7;color:#92400e}
+  .sdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .s-ok{background:var(--ok)}.s-warn{background:var(--warn)}.s-urg{background:var(--urg)}.s-crit{background:var(--crit)}.s-none{background:#cbd5e1}
+  .s-done{background:#94a3b8}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{text-align:left;padding:10px 12px;font-size:13px;border-bottom:1px solid var(--line)}
+  th{background:#eef2f5;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  tr{cursor:pointer}tr:hover td{background:#fafbfc}
+  td.id{font-family:var(--mono);font-size:12px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .dot.eng{background:var(--eng)}.dot.obra{background:var(--obra)}.dot.sup{background:var(--sup)}.dot.mec{background:var(--mec)}
+  footer{text-align:center;padding:28px;font-size:11px;color:var(--ink-2);font-family:var(--mono)}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,15,20,.45);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,100%);background:var(--panel);box-shadow:-8px 0 30px rgba(0,0,0,.2);transform:translateX(100%);transition:.25s;z-index:50;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .drawer-head .did{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+  .drawer-head h2{font-size:16px;font-weight:700;flex:1}
+  .drawer-head .x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-2);line-height:1}
+  .drawer-body{flex:1;overflow-y:auto;padding:20px}
+  .drawer-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .drawer-foot .left{margin-right:auto}
+  .btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:9px 16px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .btn.danger{background:#fff;color:var(--crit);border-color:#f3c2c2}
+  .sec{margin-bottom:22px}
+  .sec h4{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);font-weight:700;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .fld{margin-bottom:13px}
+  .fld label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);font-weight:600;margin-bottom:4px}
+  .fld input,.fld select,.fld textarea{width:100%;font-family:var(--sans);font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+  .fld textarea{resize:vertical;min-height:52px}
+  .fld .val{font-size:14px;padding:2px 0;min-height:20px}
+  .fld .val.empty{color:#aeb8c2;font-style:italic}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .impact-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .impact-grid label{display:flex;align-items:center;gap:7px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:500;cursor:pointer;margin:0}
+  .impact-grid input{width:auto}
+  .hist{list-style:none;font-size:12px}
+  .hist li{padding:7px 0;border-bottom:1px dashed var(--line);display:flex;gap:10px}
+  .hist li .d{font-family:var(--mono);color:var(--ink-2);flex-shrink:0;width:78px}
+  .banner-edit{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:16px}
+  .qmenu{position:fixed;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 34px rgba(0,0,0,.2);padding:12px;z-index:70;width:240px;display:none}
+  .qmenu h5{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin-bottom:8px}
+  .qmenu .fld{margin-bottom:9px}
+  .qmenu .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+  .toggle.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .ticket{user-select:none}
+  .ticket:active{cursor:grabbing}
+  .stack.dragover{outline:2px dashed var(--accent);outline-offset:-3px;background:#f0f7ff;border-radius:6px}
+  .swim-head.dragover{outline:2px dashed var(--accent);outline-offset:3px;border-radius:6px}
+  .area-top{cursor:grab}
+  .area-top:active{cursor:grabbing}
+  .ahandle{opacity:.55;font-size:11px;margin-right:2px}
+  .hoje-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .hoje-head .more{font-size:12px;color:var(--accent);cursor:pointer;font-weight:600}
+  .hoje-empty{font-size:13px;color:var(--ink-2);padding:8px 0}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--ink);color:#fff;padding:12px 16px;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;align-items:center;gap:14px;z-index:90;font-size:13px;max-width:90vw}
+  .toast button{background:#fff;color:var(--ink);border:none;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer;font-size:12px}
+  @media(max-width:640px){.kpi .n{font-size:24px}main{padding:14px}.bar-row .lab{width:100px}.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="tag">LPS</span> Gestão de Restrições · Quadro da Obra</h1>
+  <div class="tools">
+    <span class="count" id="hmeta" style="color:#9fb0bf;margin-right:6px"></span>
+    <button onclick="exportJSON()">Exportar JSON</button>
+    <button onclick="importJSON()">Importar</button>
+    <button onclick="resetData()">Restaurar leitura</button>
+    <button class="pri" onclick="openDrawer(null)">+ Nova restrição</button>
+  </div>
+</header>
+<nav>
+  <button class="active" data-v="pmo">Análise Executiva PMO</button>
+  <button data-v="hoje">Hoje</button>
+  <button data-v="painel">Painel</button>
+  <button data-v="kanban">Kanban</button>
+  <button data-v="lista">Lista</button>
+  <button data-v="arquivo">Concluídas <span class="badge" id="archBadge">0</span></button>
+</nav>
+<main>
+  <section class="view active" id="pmo"></section>
+  <section class="view" id="hoje">
+    <div class="filters">
+      <input id="qaTitulo" placeholder="Título da restrição" style="min-width:220px;flex:1">
+      <input id="qaArea" list="qaAreasDL" placeholder="Área" style="min-width:150px">
+      <datalist id="qaAreasDL"></datalist>
+      <select id="qaTipo"><option value="engenharia">Engenharia</option><option value="obra">OBRA - CIVIL</option><option value="obra_mecanica">OBRA - MECÂNICA</option><option value="suprimentos">Suprimentos</option></select>
+      <input id="qaPrazo" type="date">
+      <button class="new" onclick="quickAdd()">+ Adicionar</button>
+      <span class="count">cadastro rápido · título + área + prazo · Enter confirma</span>
+    </div>
+    <div class="filters">
+      <select id="fhEsp"></select><select id="fhTipo"></select><select id="fhMeta"></select><select id="fhResp"></select><select id="fhPri"></select>
+      <input id="fhBusca" placeholder="Buscar…">
+      <button class="clear" onclick="clearFHoje()">Limpar</button>
+    </div>
+    <div class="grid2" id="hojeGrid"></div>
+  </section>
+  <section class="view" id="painel">
+    <div class="alerts" id="alerts"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card"><h3>Por tipo</h3><div id="byTipo"></div></div>
+      <div class="card"><h3>Por especialista</h3><div id="byEsp"></div></div>
+      <div class="card"><h3>Por meta estratégica</h3><div id="byMeta"></div></div>
+      <div class="card"><h3>Top áreas com mais restrições</h3><div id="byArea"></div></div>
+      <div class="card"><h3>Ranking de gargalos — destravam mais atividades</h3><div id="gargalos"></div></div>
+      <div class="card"><h3>Prontidão (make ready)</h3><div id="makeready"></div></div>
+    </div>
+  </section>
+  <section class="view" id="kanban">
+    <div class="filters">
+      <select id="fkEsp"></select><select id="fkTipo"></select><select id="fkMeta"></select><select id="fkStatus"></select><select id="fkPri"></select><select id="fkResp"></select>
+      <input id="fkBusca" placeholder="Buscar…">
+      <button class="clear" onclick="clearF('fk')">Limpar</button>
+      <button class="clear toggle" id="btnDetail" onclick="toggleDetail()">Detalhes</button>
+      <button class="new" onclick="openDrawer(null)">+ Nova</button>
+      <span class="count" id="fkCount"></span>
+    </div>
+    <div id="board"></div>
+  </section>
+  <section class="view" id="lista">
+    <div class="filters">
+      <select id="flEsp"></select><select id="flTipo"></select><select id="flMeta"></select><select id="flStatus"></select><select id="flPri"></select><select id="flResp"></select>
+      <input id="flBusca" placeholder="Buscar…">
+      <button class="clear" onclick="clearF('fl')">Limpar</button>
+      <span class="count" id="flCount"></span>
+    </div>
+    <table>
+      <thead><tr>
+        <th data-s="alerta">•</th><th data-s="id">ID</th><th data-s="titulo">Título</th><th data-s="area">Área</th>
+        <th data-s="especialista">Especialista</th><th data-s="responsavelSolucao">Responsável</th><th data-s="tipo">Tipo</th><th data-s="prioridade">Prior.</th>
+        <th data-s="status">Situação</th><th data-s="dataPrevista">Prazo</th><th>Relações</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+  <section class="view" id="arquivo">
+    <div class="filters">
+      <input id="faBusca" placeholder="Buscar nas concluídas…">
+      <span class="count" id="faCount"></span>
+    </div>
+    <div id="archive"></div>
+  </section>
+</main>
+<footer id="foot"></footer>
+
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <span class="did" id="dId"></span>
+    <h2 id="dTitleHead">Restrição</h2>
+    <button class="x" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-body" id="dBody"></div>
+  <div class="drawer-foot" id="dFoot"></div>
+</aside>
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastBtn" style="display:none"></button></div>
+<div class="qmenu" id="qmenu" onclick="event.stopPropagation()">
+  <h5 id="qmTit">Atualização rápida</h5>
+  <div class="fld"><label>Prazo</label><input type="date" id="qmPrazo"></div>
+  <div class="fld"><label>Situação</label><select id="qmStatus"><option>Aberta</option><option>Em andamento</option><option>Resolvida</option><option>Cancelada</option></select></div>
+  <div class="fld"><label>Responsável pela solução</label><input type="text" id="qmResp" list="respDL" placeholder="Nome ou empresa"><datalist id="respDL"></datalist></div>
+  <div class="fld"><label>Próxima ação</label><input type="text" id="qmAcao" placeholder="Ex.: cobrar fornecedor"></div>
+  <div class="btns"><button class="btn" onclick="closeQuick()">Fechar</button><button class="btn ok" onclick="applyQuick()">Aplicar</button></div>
+</div>
+<input type="file" id="fileInput" accept="application/json" style="display:none">
+
+<script>
+const SEED = {
+  "projeto": "Sistema Inteligente de Gestão de Restrições",
+  "fonte": "Leitura do quadro Kanban físico - fotos 11/07/2026 09:09-09:10",
+  "atualizadoEm": "2026-07-11",
+  "legenda": {
+    "engenharia": "Azul",
+    "suprimentos": "Laranja",
+    "obra": "Rosa",
+    "area": "Amarelo (cabecalho)",
+    "especialista": "Verde"
+  },
+  "especialistas": {
+    "Osmar": [
+      "Balanca",
+      "Armazem Graos",
+      "Casa de Maquinas",
+      "Armazem DDGS",
+      "Mash Milling",
+      "Moinho",
+      "Moega",
+      "Depsito Agrotoxico",
+      "Quimicos",
+      "Enzimas",
+      "Oficina",
+      "Almox",
+      "Pipe Rack"
+    ],
+    "Afonso": [
+      "Expedicao Etanol",
+      "Expedicao Oleo",
+      "Armazenamento Etanol",
+      "Armazenamento Oleo",
+      "Tanques de Medicao",
+      "ETE",
+      "Central de Residuos",
+      "Stacker Reclaimer",
+      "Acido Graxo",
+      "Patio Biomassa",
+      "Caminho Alternativo",
+      "Lagoa de Seguranca",
+      "LGE",
+      "Praca de Bombas"
+    ],
+    "Matheus": [
+      "Muro Perimetral"
+    ],
+    "Giumar": [
+      "Terraplanagem",
+      "Fossas e Sumidouros"
+    ]
+  },
+  "restricoes": [
+    {
+      "id": "R-001",
+      "titulo": "Concretar piso",
+      "area": "Balanca",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-002",
+      "titulo": "Cargas TTO3",
+      "area": "Armazem Graos",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": []
+    },
+    {
+      "id": "R-003",
+      "titulo": "Banheiro p/ milho",
+      "area": "Armazem Graos",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": []
+    },
+    {
+      "id": "R-004",
+      "titulo": "Projeto GM's restantes",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-005",
+      "titulo": "Equalizacao bases GM",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [
+        "R-004"
+      ],
+      "foto": 2,
+      "inferido": [
+        "especialista",
+        "dependencia"
+      ]
+    },
+    {
+      "id": "R-006",
+      "titulo": "Reacoes predio p/ Zortea",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista",
+        "leitura"
+      ]
+    },
+    {
+      "id": "R-007",
+      "titulo": "Chumbador ML's",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [
+        "R-004"
+      ],
+      "foto": 2,
+      "inferido": [
+        "especialista",
+        "dependencia"
+      ]
+    },
+    {
+      "id": "R-008",
+      "titulo": "Projeto silo rejeito",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-009",
+      "titulo": "Bases transportadores Nova Era",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-010",
+      "titulo": "Chumbador extra",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-011",
+      "titulo": "Contratacao bases filtros de po",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-012",
+      "titulo": "Traves de seguranca",
+      "area": "Casa de Maquinas",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "Alta (sugerida)",
+      "urgencia": "Normal",
+      "impacto": [
+        "Seguranca"
+      ],
+      "depende": [],
+      "foto": 2,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-013",
+      "titulo": "Contratacao bases p/ muretas e drenagem",
+      "area": "Mash Milling",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 2,
+      "inferido": []
+    },
+    {
+      "id": "R-014",
+      "titulo": "Projeto silos de rejeito",
+      "area": "Mash Milling",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 2,
+      "inferido": []
+    },
+    {
+      "id": "R-015",
+      "titulo": "Projeto TTO4",
+      "area": "Mash Milling",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 2,
+      "inferido": []
+    },
+    {
+      "id": "R-016",
+      "titulo": "Revisao area moega",
+      "area": "Stacker Reclaimer",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-017",
+      "titulo": "Aprovacao projetos GD",
+      "area": "Stacker Reclaimer",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Caminho do Grao",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-018",
+      "titulo": "Projetos bases de suporte",
+      "area": "Tanques de Medicao",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-019",
+      "titulo": "Projetos base de suporte",
+      "area": "Armazenamento Oleo",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-020",
+      "titulo": "Falta projetos",
+      "area": "Acido Graxo",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-021",
+      "titulo": "Contratacao construtora",
+      "area": "Acido Graxo",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [
+        "R-020"
+      ],
+      "foto": 4,
+      "inferido": [
+        "especialista",
+        "dependencia"
+      ]
+    },
+    {
+      "id": "R-022",
+      "titulo": "Projeto executivo",
+      "area": "Expedicao Etanol",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Etanol",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-023",
+      "titulo": "Projeto executivo",
+      "area": "Expedicao Oleo",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-024",
+      "titulo": "Plato",
+      "area": "Expedicao Oleo",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Oleo",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-025",
+      "titulo": "Readequar terraplanagem",
+      "area": "Patio Biomassa",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 4,
+      "inferido": [
+        "especialista"
+      ]
+    },
+    {
+      "id": "R-026",
+      "titulo": "Readequar plato",
+      "area": "Caminho Alternativo",
+      "especialista": "Afonso",
+      "tipo": "obra",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-027",
+      "titulo": "Dimensionamento da lagoa",
+      "area": "Lagoa de Seguranca",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "Alta (sugerida)",
+      "urgencia": "Normal",
+      "impacto": [
+        "Seguranca"
+      ],
+      "depende": [],
+      "foto": 4,
+      "inferido": []
+    },
+    {
+      "id": "R-028",
+      "titulo": "Portao enlonado",
+      "area": "Almox",
+      "especialista": "Osmar",
+      "tipo": "suprimentos",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-029",
+      "titulo": "Escada e guarda-corpo mezanino",
+      "area": "Almox",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Seguranca"
+      ],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-030",
+      "titulo": "Pintura",
+      "area": "Almox",
+      "especialista": "Osmar",
+      "tipo": "suprimentos",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-031",
+      "titulo": "Gradil / mureta enzimas",
+      "area": "Enzimas",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": [
+        "leitura"
+      ]
+    },
+    {
+      "id": "R-032",
+      "titulo": "Drenagem externa",
+      "area": "Oficina",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-033",
+      "titulo": "Pintura",
+      "area": "Oficina",
+      "especialista": "Osmar",
+      "tipo": "suprimentos",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-034",
+      "titulo": "Falta chumbador 08,12,13,14 e 15",
+      "area": "Pipe Rack",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-035",
+      "titulo": "Falta projeto 16 e 17",
+      "area": "Pipe Rack",
+      "especialista": "Osmar",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-036",
+      "titulo": "Contratacao bases p/ muretas e drenagem",
+      "area": "Quimicos",
+      "especialista": "Osmar",
+      "tipo": "obra",
+      "meta": "Utilidades",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 3,
+      "inferido": []
+    },
+    {
+      "id": "R-037",
+      "titulo": "OC rachao",
+      "area": "Armazenamento Etanol",
+      "especialista": "Afonso",
+      "tipo": "suprimentos",
+      "meta": "Etanol",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 5,
+      "inferido": [
+        "leitura"
+      ]
+    },
+    {
+      "id": "R-038",
+      "titulo": "Projetos bases de suportes",
+      "area": "Armazenamento Etanol",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Etanol",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 5,
+      "inferido": []
+    },
+    {
+      "id": "R-039",
+      "titulo": "Aprovacao projetos GD",
+      "area": "ETE",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 5,
+      "inferido": []
+    },
+    {
+      "id": "R-040",
+      "titulo": "Contratacao construtora",
+      "area": "ETE",
+      "especialista": "Afonso",
+      "tipo": "obra",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [
+        "R-039"
+      ],
+      "foto": 5,
+      "inferido": [
+        "dependencia"
+      ]
+    },
+    {
+      "id": "R-041",
+      "titulo": "Plato",
+      "area": "LGE",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 5,
+      "inferido": []
+    },
+    {
+      "id": "R-042",
+      "titulo": "Plato",
+      "area": "Praca de Bombas",
+      "especialista": "Afonso",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 5,
+      "inferido": []
+    },
+    {
+      "id": "R-043",
+      "titulo": "Aditivo",
+      "area": "Fossas e Sumidouros",
+      "especialista": "Giumar",
+      "tipo": "obra",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Contrato"
+      ],
+      "depende": [],
+      "foto": 6,
+      "inferido": []
+    },
+    {
+      "id": "R-044",
+      "titulo": "Aditivo",
+      "area": "Terraplanagem",
+      "especialista": "Giumar",
+      "tipo": "obra",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [
+        "Contrato",
+        "Liberacao de Frente"
+      ],
+      "depende": [],
+      "foto": 6,
+      "inferido": []
+    },
+    {
+      "id": "R-045",
+      "titulo": "Cotas de nivel",
+      "area": "Muro Perimetral",
+      "especialista": "Matheus",
+      "tipo": "engenharia",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 6,
+      "inferido": []
+    },
+    {
+      "id": "R-046",
+      "titulo": "Fornecimento gradil",
+      "area": "Muro Perimetral",
+      "especialista": "Matheus",
+      "tipo": "suprimentos",
+      "meta": "Infraestrutura Geral",
+      "status": "Aberta",
+      "prioridade": "A definir",
+      "urgencia": "Normal",
+      "impacto": [],
+      "depende": [],
+      "foto": 6,
+      "inferido": []
+    }
+  ]
+};
+const KEY='restricoes_obra_v2';
+const TIPO_LAB={engenharia:"Engenharia",obra:"OBRA - CIVIL",suprimentos:"Suprimentos",obra_mecanica:"OBRA - MECÂNICA"};
+const TIPO_CLS={engenharia:"eng",obra:"obra",suprimentos:"sup",obra_mecanica:"mec"};
+const COL={engenharia:"var(--eng)",obra:"var(--obra)",suprimentos:"var(--sup)",obra_mecanica:"var(--mec)"};
+const isObra=t=>t==="obra"||t==="obra_mecanica";
+const PRIOS=["A definir","Baixa","Média","Alta","Crítica"];
+const URGS=["Normal","Alta","Imediata"];
+const STATUSES=["Aberta","Em andamento","Resolvida","Cancelada"];
+const IMPACTOS=[["Seguranca","Segurança"],["Qualidade","Qualidade"],["Custo","Custo"],["Prazo","Prazo"],["Liberacao de Frente","Liberação de Frente"],["Caminho Critico","Caminho Crítico"],["Producao","Produção"],["Contrato","Contrato"]];
+const hoje=()=>new Date().toISOString().slice(0,10);
+const fmtBR=d=>{if(!d)return '';const p=(''+d).split('-');return p.length===3?p[2]+'/'+p[1]:d;};
+const canonName=s=>(s||'').trim().replace(/\s+/g,' ');
+const normKey=s=>canonName(s).toLowerCase();
+
+function migrate(r){
+  const d={descricao:"",responsavelSolucao:"",empresa:"",pessoa:"",disciplina:"",marco:"",atividade:"",
+    dataCriacao:"2026-07-11",dataPrevista:"",dataReal:"",impactoDesc:"",proximaAcao:"",observacoes:"",comentarios:"",concluida:false,dataConclusao:"",historico:[]};
+  const o=Object.assign(d,r);
+  o.impacto=o.impacto||[];o.depende=o.depende||[];o.inferido=o.inferido||[];o.historico=o.historico||[];
+  if(o.prioridade&&(''+o.prioridade).includes("sugerida")){o.prioridade="Alta";
+    if(!o.historico.some(h=>h.texto.includes("sugerida")))o.historico.push({data:"2026-07-11",texto:"Prioridade Alta sugerida pelo sistema (impacto em Segurança)"});}
+  if(!PRIOS.includes(o.prioridade))o.prioridade="A definir";
+  if(!o.historico.length)o.historico.push({data:o.dataCriacao,texto:"Restrição criada a partir da leitura do quadro físico"});
+  return o;
+}
+function seedState(){const s=JSON.parse(JSON.stringify(SEED));s.restricoes=s.restricoes.map(migrate);return s;}
+function joaoEudesMec(st){ // reclassifica cards do Joao Eudes como OBRA - MECANICA (uma unica vez)
+  st.migr=st.migr||{};
+  if(st.migr.joaoEudesMec)return st;
+  (st.restricoes||[]).forEach(r=>{
+    const rn=((r.responsavelSolucao||'')+'').trim().toLowerCase();
+    if(rn==='joão eudes'||rn==='joao eudes'){r.tipo='obra_mecanica';
+      (r.historico=r.historico||[]).push({data:hoje(),texto:'Reclassificada como OBRA - MECÂNICA (responsável João Eudes)'});}
+  });
+  st.migr.joaoEudesMec=true;return st;}
+function load(){let st;try{const raw=localStorage.getItem(KEY);if(raw)st=JSON.parse(raw);}catch(e){}
+  if(!st)st=seedState();return joaoEudesMec(st);}
+let warnedSave=false;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){console.warn(e);
+  if(!warnedSave){warnedSave=true;showToast('Aviso: este visualizador não permite salvar. Baixe o arquivo e abra direto no navegador para persistir os dados.',null,null,8000);}}}
+let state=load();let R=state.restricoes;
+let bloqueia={};
+function recalcBloqueia(){bloqueia={};R.forEach(r=>r.depende.forEach(d=>{(bloqueia[d]=bloqueia[d]||[]).push(r.id)}));}
+recalcBloqueia();
+
+function nextId(){let m=0;R.forEach(r=>{const n=parseInt((r.id||"").replace(/\D/g,''))||0;if(n>m)m=n;});return"R-"+String(m+1).padStart(3,'0');}
+function allEsp(){return[...new Set([...Object.keys(state.especialistas||{}),...R.map(r=>r.especialista)])].filter(Boolean);}
+function allAreas(){return[...new Set(R.map(r=>r.area))].filter(Boolean).sort();}
+function allMetas(){return[...new Set(R.map(r=>r.meta))].filter(Boolean).sort();}
+function allEmpresas(){return[...new Set(R.map(r=>r.empresa))].filter(Boolean).sort();}
+function allResp(){const m=new Map();R.forEach(r=>{const val=canonName(r.responsavelSolucao);if(val){const k=val.toLowerCase();if(!m.has(k))m.set(k,val);}});return[...m.values()].sort((a,b)=>a.localeCompare(b));}
+
+function alertaOf(r){
+  if(r.status==='Resolvida'||r.status==='Cancelada')return{cls:'s-done',lab:r.status};
+  if(!r.dataPrevista)return{cls:'s-none',lab:'Sem prazo'};
+  const dias=Math.ceil((new Date(r.dataPrevista)-new Date(hoje()))/864e5);
+  if(dias<0)return{cls:'s-crit',lab:'Vencida '+(-dias)+'d'};
+  if(dias<=3)return{cls:'s-urg',lab:'Urgente '+dias+'d'};
+  if(dias<=7)return{cls:'s-warn',lab:'Atenção '+dias+'d'};
+  return{cls:'s-ok',lab:dias+'d'};
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');document.getElementById(b.dataset.v).classList.add('active');
+});
+
+const groupCount=(arr,key)=>{const m={};arr.forEach(r=>{const k=typeof key==='function'?key(r):r[key];m[k]=(m[k]||0)+1});return m;};
+function bars(el,map,colorFn,clickFn){
+  const max=Math.max(...Object.values(map),1),ent=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=ent.map(([k,v])=>`<div class="bar-row${clickFn?' clk':''}" ${clickFn?clkAttr(clickFn(k)):''}><span class="lab">${esc(k)}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${v/max*100}%;background:${colorFn?colorFn(k):'var(--accent)'}"></div></div>
+    <span class="val">${v}</span></div>`).join('');
+}
+function renderPainel(){
+  const AT=R.filter(r=>!r.concluida);
+  const eng=AT.filter(r=>r.tipo==='engenharia').length,obra=AT.filter(r=>r.tipo==='obra').length,mec=AT.filter(r=>r.tipo==='obra_mecanica').length,sup=AT.filter(r=>r.tipo==='suprimentos').length;
+  const abertas=AT.filter(r=>r.status==='Aberta'||r.status==='Em andamento').length;
+  const conclu=R.filter(r=>r.concluida).length;
+  const seg=AT.filter(r=>r.impacto.includes('Seguranca')).length;
+  const vencidas=AT.filter(r=>alertaOf(r).cls==='s-crit').length;
+  const proximas=AT.filter(r=>['s-urg','s-warn'].includes(alertaOf(r).cls)).length;
+  const semPrazo=AT.filter(r=>!r.dataPrevista).length;
+  const isAtivo=id=>{const x=R.find(y=>y.id===id);return x&&!x.concluida&&x.status!=='Resolvida'&&x.status!=='Cancelada';};
+  const OBRA=AT.filter(r=>isObra(r.tipo));
+  const terceiros=AT.filter(r=>!isObra(r.tipo)).length;
+  const bloqueadas=OBRA.filter(r=>r.depende.some(isAtivo)).length;
+  const livres=OBRA.length-bloqueadas;
+  const kpi=[
+    {n:vencidas,l:'Vencidas',c:'crit',act:{view:'lista',sort:'alerta'}},
+    {n:semPrazo,l:'Sem prazo',c:semPrazo?'crit':'',act:{view:'lista',sort:'dataPrevista'}},
+    {n:livres,l:'Obra livre p/ ação',act:{view:'kanban',tipo:'obra'}},
+    {n:bloqueadas,l:'Obra bloqueada',c:'warn',act:{view:'kanban',tipo:'obra'}},
+    {n:AT.length,l:'No quadro',act:{view:'kanban'}},
+  ];
+  document.getElementById('kpis').innerHTML=kpi.map(k=>`<div class="kpi ${k.c||''}${k.act?' clickable':''}" ${k.act?clkAttr(k.act):''}><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+  pieTipo(eng,obra,sup,mec);
+  bars(document.getElementById('byEsp'),groupCount(AT,'especialista'),null,k=>({view:'kanban',esp:k}));
+  bars(document.getElementById('byMeta'),groupCount(AT,'meta'),null,k=>({view:'kanban',meta:k}));
+  bars(document.getElementById('byArea'),Object.fromEntries(Object.entries(groupCount(AT,'area')).sort((a,b)=>b[1]-a[1]).slice(0,8)),null,k=>({view:'kanban',busca:k}));
+  // Ranking de gargalos: efeito em cadeia (bloqueios diretos + indiretos)
+  const cadeia=id=>{const seen=new Set();const walk=x=>{(bloqueia[x]||[]).forEach(b=>{if(!seen.has(b)){seen.add(b);walk(b);}});};walk(id);return seen.size;};
+  const rank=AT.map(r=>({r,n:cadeia(r.id)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,6);
+  document.getElementById('gargalos').innerHTML=rank.length?rank.map(({r,n})=>
+    `<div class="bar-row clk" onclick="openDrawer('${r.id}')">
+      <span class="lab" style="width:170px">${r.id} · ${esc(r.titulo.length>22?r.titulo.slice(0,22)+'…':r.titulo)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${n/rank[0].n*100}%;background:${COL[r.tipo]}"></div></div>
+      <span class="val">${n}</span></div>`).join('')+
+    '<p style="font-size:11px;color:var(--ink-2);margin-top:8px">Nº de restrições destravadas (efeito direto + em cadeia). Clique para abrir a ficha.</p>'
+    :'<p style="font-size:12px;color:var(--ink-2)">Cadastre dependências entre restrições (campo "Depende de" na ficha) para o ranking identificar o que destrava mais atividades.</p>';
+  // Make ready: so OBRA e acao propria. Engenharia/Suprimentos = insumo de terceiros.
+  const tot=AT.length||1;
+  const pL=Math.round(livres/tot*100),pB=Math.round(bloqueadas/tot*100),pT=100-pL-pB;
+  const pctObra=OBRA.length?Math.round(livres/OBRA.length*100):0;
+  const engN=AT.filter(r=>r.tipo==='engenharia').length,supN=AT.filter(r=>r.tipo==='suprimentos').length,mecN=AT.filter(r=>r.tipo==='obra_mecanica').length;
+  const row=(cor,nome,estado,n,act)=>`<div class="mr-row" onclick='goFilter(${JSON.stringify(act)})'>
+      <span class="mr-sw" style="background:${cor}"></span>
+      <span class="mr-name">${nome}</span>
+      <span class="mr-state">${estado}</span>
+      <span class="mr-n">${n}</span></div>`;
+  document.getElementById('makeready').innerHTML=
+    `<div style="display:flex;height:26px;border-radius:5px;overflow:hidden;margin-bottom:14px">
+      <div style="width:${pL}%;background:var(--obra)" title="Obra pronta para executar"></div>
+      <div style="width:${pB}%;background:var(--obra);opacity:.35" title="Obra travada por dependência"></div>
+      <div style="width:${pT}%;background:repeating-linear-gradient(45deg,#dfe6ec,#dfe6ec 6px,#eef2f6 6px,#eef2f6 12px)" title="Insumo de terceiros"></div></div>
+    ${row('var(--obra)','Obra civil','pronta para executar',livres,{view:'kanban',tipo:'obra'})}
+    ${row('var(--obra)','Obra civil','travada por dependência',bloqueadas,{view:'kanban',tipo:'obra'})}
+    ${mecN?row('var(--mec)','Obra mecânica','execução própria',mecN,{view:'kanban',tipo:'obra_mecanica'}):''}
+    ${row('var(--eng)','Engenharia','a cobrar (não é ação própria)',engN,{view:'kanban',tipo:'engenharia'})}
+    ${row('var(--sup)','Suprimentos','a cobrar (não é ação própria)',supN,{view:'kanban',tipo:'suprimentos'})}
+    <p style="font-size:11px;color:var(--ink-2);margin-top:10px"><b>${pctObra}% da obra está pronta para executar</b> (${livres} de ${OBRA.length} restrições de obra). Só isso entra na programação semanal — Engenharia e Suprimentos dependem de terceiros.</p>`;
+  const A=[];
+  if(eng)A.push({t:'crit',h:`<b>Gargalo nº 1 — Engenharia.</b> ${eng} de ${AT.length} no quadro (${Math.round(eng/(AT.length||1)*100)}%). Projetos represam as frentes de obra.`});
+  if(vencidas)A.push({t:'crit',h:`<b>${vencidas} restrições vencidas.</b> Ordene por Prazo na aba Lista.`});
+  if(seg)A.push({t:'crit',h:`<b>${seg} restrições com impacto em Segurança</b> — prioridade máxima.`});
+  if(proximas)A.push({t:'warn',h:`<b>${proximas} restrições próximas do vencimento</b> (≤7 dias).`});
+  const inf=R.filter(r=>r.inferido&&r.inferido.length).length;
+  if(inf)A.push({t:'info',h:`<b>${inf} restrições com campos inferidos</b>. Abra o card para confirmar e completar.`});
+  document.getElementById('alerts').innerHTML=A.map(a=>`<div class="alert ${a.t}">${a.h}</div>`).join('');
+}
+
+function pieTipo(eng,obra,sup,mec){
+  mec=mec||0;
+  const data=[
+    {k:'engenharia',l:'Engenharia',n:eng,c:'#3b9dd6'},
+    {k:'obra',l:'OBRA - CIVIL',n:obra,c:'#ec4899'},
+    {k:'obra_mecanica',l:'OBRA - MECÂNICA',n:mec,c:'#7c3aed'},
+    {k:'suprimentos',l:'Suprimentos',n:sup,c:'#f5a623'},
+  ].filter(d=>d.n>0);
+  const tot=eng+obra+sup+mec;
+  const el=document.getElementById('byTipo');
+  if(!tot){el.innerHTML='<p style="font-size:13px;color:var(--ink-2)">Nenhuma restrição no quadro.</p>';return;}
+  const cx=100,cy=100,rOut=88,rIn=50;
+  let ang=-Math.PI/2,paths='';
+  const pol=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+  data.forEach(d=>{
+    const frac=d.n/tot,sweep=frac*2*Math.PI,end=ang+sweep;
+    const pct=Math.round(frac*100);
+    let path;
+    if(data.length===1){
+      path=`<circle cx="${cx}" cy="${cy}" r="${rOut}" fill="${d.c}"/><circle cx="${cx}" cy="${cy}" r="${rIn}" fill="#fff"/>`;
+    }else{
+      const[x1,y1]=pol(rOut,ang),[x2,y2]=pol(rOut,end),[x3,y3]=pol(rIn,end),[x4,y4]=pol(rIn,ang);
+      const big=sweep>Math.PI?1:0;
+      path=`<path d="M ${x1} ${y1} A ${rOut} ${rOut} 0 ${big} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${big} 0 ${x4} ${y4} Z" fill="${d.c}" stroke="#fff" stroke-width="2"/>`;
+    }
+    paths+=`<g class="pie-slice" onclick='goFilter({view:"kanban",tipo:"${d.k}"})'><title>${d.l}: ${d.n} (${pct}%)</title>${path}</g>`;
+    if(frac>=0.08){
+      const[lx,ly]=pol((rOut+rIn)/2,ang+sweep/2);
+      paths+=`<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" fill="#fff" style="font-size:14px;font-weight:700;pointer-events:none;font-family:var(--sans)">${pct}%</text>`;
+    }
+    ang=end;
+  });
+  const svg=`<svg viewBox="0 0 200 200" style="width:190px;height:190px">${paths}
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" style="font-size:26px;font-weight:700;fill:var(--ink);font-family:var(--mono)">${tot}</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle" style="font-size:10px;fill:var(--ink-2);font-family:var(--sans);letter-spacing:.05em">NO QUADRO</text></svg>`;
+  const legend=data.map(d=>`<div class="lrow" onclick='goFilter({view:"kanban",tipo:"${d.k}"})'>
+      <span class="sw" style="background:${d.c}"></span>
+      <span class="lname">${d.l}</span>
+      <span class="lnum">${d.n}</span>
+      <span class="lpct">${Math.round(d.n/tot*100)}%</span>
+    </div>`).join('');
+  el.innerHTML=`<div class="pie-wrap">${svg}<div class="pie-legend">${legend}</div></div>`;
+}
+function fillSelects(){
+  const esp=['Todos os especialistas',...allEsp()],tipo=['Todos os tipos','engenharia','obra','obra_mecanica','suprimentos'],
+    meta=['Todas as metas',...allMetas()],st=['Todas as situações',...STATUSES],pri=['Todas as prioridades',...PRIOS];
+  opt('fkEsp',esp);opt('flEsp',esp);opt('fkTipo',tipo,x=>TIPO_LAB[x]||x);opt('flTipo',tipo,x=>TIPO_LAB[x]||x);
+  opt('fkMeta',meta);opt('flMeta',meta);opt('fkStatus',st);opt('flStatus',st);opt('fkPri',pri);opt('flPri',pri);
+  const resp=['Todos os responsáveis',...allResp(),'__SEM__'];
+  opt('fkResp',resp,x=>x==='__SEM__'?'— Sem responsável —':x);opt('flResp',resp,x=>x==='__SEM__'?'— Sem responsável —':x);
+  const dl=document.getElementById('qaAreasDL');if(dl)dl.innerHTML=allAreas().map(a=>`<option value="${esc(a)}">`).join('');
+  opt('fhEsp',esp);opt('fhTipo',tipo,x=>TIPO_LAB[x]||x);opt('fhMeta',meta);opt('fhPri',pri);
+  opt('fhResp',['Todos os responsáveis',...allResp(),'__SEM__'],x=>x==='__SEM__'?'— Sem responsável —':x);
+}
+function opt(id,arr,lab){const el=document.getElementById(id);const cur=el.value;
+  el.innerHTML=arr.map((x,i)=>`<option value="${i===0?'':esc(x)}">${lab?lab(x):esc(x)}</option>`).join('');el.value=cur;}
+function readF(p){return{esp:v(p+'Esp'),tipo:v(p+'Tipo'),meta:v(p+'Meta'),status:v(p+'Status'),pri:v(p+'Pri'),resp:v(p+'Resp'),busca:v(p+'Busca')};}
+function matchResp(r,f){if(!f.resp)return true;
+  const rr=canonName(r.responsavelSolucao);
+  return f.resp==='__SEM__'?!rr:normKey(rr)===normKey(f.resp);}
+function v(id){return document.getElementById(id).value;}
+function applyF(f){return R.filter(r=>!r.concluida&&(!f.esp||r.especialista===f.esp)&&(!f.tipo||r.tipo===f.tipo)&&(!f.meta||r.meta===f.meta)&&(!f.status||r.status===f.status)&&(!f.pri||r.prioridade===f.pri)&&matchResp(r,f)&&(!f.busca||(r.titulo+' '+r.area+' '+r.id+' '+r.impacto.join(' ')).toLowerCase().includes(f.busca.toLowerCase())));}
+function clearF(p){['Esp','Tipo','Meta','Status','Pri','Resp'].forEach(s=>document.getElementById(p+s).value='');document.getElementById(p+'Busca').value='';renderKanban();renderLista();}
+function activateView(name){document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.v===name));document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===name));}
+function clkAttr(act){return "onclick='goFilter("+JSON.stringify(act).replace(/'/g,'&#39;')+")'";}
+function goFilter(o){
+  if(o.view==='kanban'||o.view==='lista'){
+    const p=o.view==='lista'?'fl':'fk';
+    ['esp','tipo','meta','status'].forEach(s=>{const el=document.getElementById(p+s.charAt(0).toUpperCase()+s.slice(1));if(el)el.value=(o[s]!=null?o[s]:'');});
+    document.getElementById(p+'Busca').value=o.busca||'';
+    if(o.sort){sortKey=o.sort;sortAsc=true;}
+  }
+  activateView(o.view);renderKanban();renderLista();renderArquivo();window.scrollTo(0,0);
+}
+
+let detailMode=false;
+function toggleDetail(){detailMode=!detailMode;const b=document.getElementById('btnDetail');if(b)b.classList.toggle('on',detailMode);renderKanban();renderHoje();}
+function critRank(r){return({'s-crit':0,'s-urg':1,'s-warn':2,'s-none':3,'s-ok':4,'s-done':5})[alertaOf(r).cls];}
+function isAtivoG(id){const x=R.find(y=>y.id===id);return x&&!x.concluida&&x.status!=='Resolvida'&&x.status!=='Cancelada';}
+function ticketHTML(r){
+  const cls=TIPO_CLS[r.tipo],a=alertaOf(r),chips=[];
+  if(r.prioridade&&r.prioridade!=='A definir')chips.push(`<span class="chip pri">${r.prioridade}</span>`);
+  if(r.impacto.includes('Seguranca'))chips.push('<span class="chip seg">Segurança</span>');
+  if(detailMode){
+    if(r.impacto.includes('Liberacao de Frente'))chips.push('<span class="chip lib">Libera frente</span>');
+    if(r.depende.length)chips.push(`<span class="chip dep">↳ ${r.depende.join(', ')}</span>`);
+    if(bloqueia[r.id])chips.push(`<span class="chip dep">bloqueia ${bloqueia[r.id].join(', ')}</span>`);
+    if(r.inferido&&r.inferido.length)chips.push('<span class="chip inf">inferido</span>');
+  }
+  const meta=[];
+  if(detailMode){
+    if(r.empresa)meta.push('🏢 '+esc(r.empresa));
+    if(r.pessoa)meta.push('👤 '+esc(r.pessoa));
+    if(r.proximaAcao)meta.push('▶ '+esc(r.proximaAcao));
+  }
+  const prazo=`<div class="tprazo ${a.cls}"><span>⏱ ${r.dataPrevista?fmtBR(r.dataPrevista):'Sem prazo'}</span><span class="tdias">${a.lab}</span></div>`;
+  const st=(r.descricao||'').trim();
+  const stHTML=st?`<div class="tstatus" title="${esc(st)}">${esc(st)}</div>`:'';
+  const resp=(r.responsavelSolucao||'').trim();
+  const respHTML=`<div class="tresp ${resp?'':'vazio'}" title="Responsável pela solução">
+      <span class="ravatar">${resp?esc(resp.trim()[0].toUpperCase()):'?'}</span>
+      <span class="rname">${resp?esc(resp):'Sem responsável'}</span></div>`;
+  return `<div class="ticket ${cls}" draggable="true" ondragstart="dragR(event,'${r.id}')" onclick="openDrawer('${r.id}')">
+    <div class="ttop">
+      <span class="tid">${r.id}</span><span class="ttype">${TIPO_LAB[r.tipo]}</span>
+      <span class="tspacer"></span>
+      <span class="tsdot ${a.cls}" title="${a.lab}"></span>
+      <button class="okbtn" title="Atualização rápida" onclick="openQuick('${r.id}',event)">⋯</button>
+      <button class="okbtn" title="Concluir e arquivar" onclick="concluir('${r.id}',event)">✓</button>
+    </div>
+    <div class="tbody">
+      <div class="tt">${esc(r.titulo)}</div>
+      ${stHTML}
+      ${chips.length?'<div class="chips">'+chips.join('')+'</div>':''}
+      ${respHTML}
+      ${prazo}
+      ${meta.length?'<div class="tmeta">'+meta.map(m=>'<span>'+m+'</span>').join('')+'</div>':''}
+    </div></div>`;
+}
+function renderKanban(){
+  const list=applyF(readF('fk'));document.getElementById('fkCount').textContent=list.length+' cartões';
+  const espOrder=[...Object.keys(state.especialistas||{}),...allEsp()].filter((x,i,a)=>a.indexOf(x)===i);
+  const byEsp={};list.forEach(r=>{(byEsp[r.especialista]=byEsp[r.especialista]||[]).push(r)});
+  let html='';
+  espOrder.filter(e=>byEsp[e]).forEach(e=>{
+    const rs=byEsp[e],byArea={};rs.forEach(r=>{(byArea[r.area]=byArea[r.area]||[]).push(r)});
+    html+=`<div class="swim"><div class="swim-head" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop='this.classList.remove("dragover");dropEsp(event,${JSON.stringify(e)})'><span class="avatar">${esc((e||'?')[0])}</span><h2>${esc(e)}</h2>
+      <span class="n">${rs.length} restrições · ${Object.keys(byArea).length} áreas</span></div><div class="areas">`;
+    Object.keys(byArea).sort().forEach(a=>{html+=`<div class="area-col"><div class="area-top" draggable="true" title="Arraste para transferir a área inteira a outro especialista" ondragstart='dragArea(event,${JSON.stringify(a)},${JSON.stringify(e)})'><span><span class="ahandle">⠿</span> ${esc(a)}</span><span>${byArea[a].length}</span></div>
+      <div class="stack" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop='this.classList.remove("dragover");dropR(event,${JSON.stringify(a)},${JSON.stringify(e)})'>${byArea[a].sort((x,y)=>critRank(x)-critRank(y)).map(ticketHTML).join('')}</div></div>`;});
+    html+='</div></div>';
+  });
+  document.getElementById('board').innerHTML=html||'<p style="color:var(--ink-2)">Nenhum cartão para este filtro.</p>';
+}
+let sortKey='id',sortAsc=true;
+function renderLista(){
+  let list=applyF(readF('fl'));
+  list.sort((a,b)=>{let x,y;if(sortKey==='alerta'){x=alertaOf(a).cls;y=alertaOf(b).cls;}else{x=(a[sortKey]||'')+'';y=(b[sortKey]||'')+'';}return sortAsc?x.localeCompare(y):y.localeCompare(x);});
+  document.getElementById('flCount').textContent=list.length+' restrições';
+  document.getElementById('tbody').innerHTML=list.map(r=>{
+    const a=alertaOf(r),rel=[...(r.depende.length?['dep: '+r.depende.join(', ')]:[]),...(bloqueia[r.id]?['bloq: '+bloqueia[r.id].join(', ')]:[])].join(' · ')||'—';
+    return `<tr onclick="openDrawer('${r.id}')">
+      <td><span class="sdot ${a.cls}" title="${a.lab}"></span></td>
+      <td class="id">${r.id}</td><td>${esc(r.titulo)}</td><td>${esc(r.area)}</td><td>${esc(r.especialista)}</td>
+      <td>${r.responsavelSolucao?esc(r.responsavelSolucao):'—'}</td>
+      <td><span class="dot ${TIPO_CLS[r.tipo]}"></span>${TIPO_LAB[r.tipo]}</td>
+      <td>${r.prioridade==='A definir'?'—':r.prioridade}</td><td>${r.status}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.dataPrevista||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--ink-2)">${rel}</td></tr>`;}).join('');
+}
+document.querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;sortAsc=sortKey===k?!sortAsc:true;sortKey=k;renderLista();});
+['fkEsp','fkTipo','fkMeta','fkStatus','fkPri','fkResp','fkBusca'].forEach(id=>document.getElementById(id).oninput=renderKanban);
+['flEsp','flTipo','flMeta','flStatus','flPri','flResp','flBusca'].forEach(id=>document.getElementById(id).oninput=renderLista);
+document.getElementById('faBusca').oninput=renderArquivo;
+const esc=s=>(s==null?'':(''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
+
+/* ---------- DRAWER / EDIÇÃO ---------- */
+let current=null,editing=false;
+function openDrawer(id){
+  current=id?JSON.parse(JSON.stringify(R.find(r=>r.id===id))):newRecord();
+  editing=!id;
+  renderDrawer();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDrawer(){document.getElementById('overlay').classList.remove('open');document.getElementById('drawer').classList.remove('open');current=null;editing=false;}
+function newRecord(){return migrate({id:nextId(),titulo:"",area:"",especialista:"",tipo:"engenharia",meta:"",status:"Aberta",prioridade:"A definir",urgencia:"Normal",impacto:[],depende:[],inferido:[],dataCriacao:hoje(),historico:[{data:hoje(),texto:"Restrição criada"}]});}
+
+function field(label,key,type,opts){
+  const r=current,val=r[key]||'';
+  if(!editing){
+    let disp=val;if(type==='tipo')disp=TIPO_LAB[val]||val;
+    return `<div class="fld"><label>${label}</label><div class="val ${disp?'':'empty'}">${disp?esc(disp):'—'}</div></div>`;
+  }
+  if(type==='textarea')return `<div class="fld"><label>${label}</label><textarea data-k="${key}">${esc(val)}</textarea></div>`;
+  if(type==='select')return `<div class="fld"><label>${label}</label><select data-k="${key}">${opts.map(o=>{
+    const ov=Array.isArray(o)?o[0]:o,ol=Array.isArray(o)?o[1]:o;return `<option value="${esc(ov)}" ${val===ov?'selected':''}>${esc(ol)}</option>`;}).join('')}</select></div>`;
+  if(type==='date')return `<div class="fld"><label>${label}</label><input type="date" data-k="${key}" value="${val}"></div>`;
+  const dl=opts?`list="dl_${key}"`:'',dlh=opts?`<datalist id="dl_${key}">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:'';
+  return `<div class="fld"><label>${label}</label><input type="text" data-k="${key}" value="${esc(val)}" ${dl}>${dlh}</div>`;
+}
+function renderDrawer(){
+  const r=current,exists=!!R.find(x=>x.id===r.id);
+  document.getElementById('dId').textContent=r.id;
+  document.getElementById('dTitleHead').textContent=editing?(exists?'Editando':'Nova restrição'):(r.titulo||'Restrição');
+  const impSet=new Set(r.impacto);
+  document.getElementById('dBody').innerHTML=`
+    ${editing?'<div class="banner-edit">Modo edição — toda alteração fica registrada no histórico.</div>':''}
+    ${current.concluida?'<div class="banner-edit" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46">✓ Concluída em '+(current.dataConclusao||'—')+' — arquivada. Use Resgatar para retornar ao quadro.</div>':''}
+    <div class="sec"><h4>Identificação</h4>
+      ${field('Título','titulo','text')}
+      ${field('Status','descricao','textarea')}
+      <div class="row2">${field('Especialista','especialista','text',allEsp())}${areaField()}</div>
+      ${field('Tipo','tipo',editing?'select':'tipo',[['engenharia','Engenharia'],['obra','OBRA - CIVIL'],['obra_mecanica','OBRA - MECÂNICA'],['suprimentos','Suprimentos']])}
+    </div>
+    <div class="sec"><h4>Classificação</h4>
+      ${field('Prioridade','prioridade','select',PRIOS)}
+      ${editing?'':field('Situação','status','text')}
+    </div>
+    <div class="sec"><h4>Responsabilidade</h4>
+      ${field('Responsável pela solução','responsavelSolucao','text')}
+    </div>
+    <div class="sec"><h4>Planejamento</h4>
+      <div class="row2">${field('Meta estratégica','meta','text',allMetas())}${field('Marco do projeto','marco','text')}</div>
+      <div class="row2">${field('Data de criação','dataCriacao','date')}${field('Prevista p/ eliminação','dataPrevista','date')}</div>
+      ${field('Data real de eliminação','dataReal','date')}
+    </div>
+    <div class="sec"><h4>Dependências</h4>
+      ${editing?`<div class="fld"><label>Depende de (IDs separados por vírgula)</label><input type="text" data-dep value="${r.depende.join(', ')}" placeholder="R-004, R-008"></div>`
+        :`<div class="fld"><label>Depende de</label><div class="val ${r.depende.length?'':'empty'}">${r.depende.length?r.depende.join(', '):'—'}</div></div>`}
+      <div class="fld"><label>Bloqueia (calculado)</label><div class="val ${bloqueia[r.id]?'':'empty'}">${bloqueia[r.id]?bloqueia[r.id].join(', '):'—'}</div></div>
+    </div>
+    <div class="sec"><h4>Histórico</h4>
+      <ul class="hist">${(r.historico||[]).slice().reverse().map(h=>`<li><span class="d">${h.data}</span><span>${esc(h.texto)}</span></li>`).join('')||'<li>Sem registros</li>'}</ul>
+    </div>`;
+  document.getElementById('dFoot').innerHTML=editing
+    ? `${exists?'<button class="btn danger left" id="btnDel" onclick="delRec()">Excluir</button>':''}
+       <button class="btn" onclick="${exists?"openDrawer('"+r.id+"')":'closeDrawer()'}">Cancelar</button>
+       <button class="btn ok" onclick="saveRec()">Salvar</button>`
+    : `${current.concluida ? '<button class="btn ok left" onclick="resgatarCurrent()">Resgatar</button>' : (exists ? '<button class="btn ok left" onclick="concluirCurrent()">✓ Concluir</button>' : '')}
+       <button class="btn" onclick="closeDrawer()">Fechar</button>
+       <button class="btn primary" onclick="editRec()">Editar</button>`;
+}
+function editRec(){editing=true;renderDrawer();}
+function areaField(){
+  if(!editing)return field('Área','area','text');
+  const val=current.area||'',opts=allAreas(),inList=opts.includes(val);
+  return `<div class="fld"><label>Área</label>
+    <div style="display:flex;gap:6px;align-items:stretch">
+      <select data-k="area" id="areaSel" style="flex:1">
+        ${val?'':'<option value="" selected disabled>Selecione…</option>'}
+        ${(!inList&&val)?`<option value="${esc(val)}" selected>${esc(val)}</option>`:''}
+        ${opts.map(o=>`<option value="${esc(o)}" ${o===val?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>
+      <button type="button" class="btn" style="padding:6px 12px;white-space:nowrap" onclick="novaArea()">+ Nova área</button>
+    </div></div>`;
+}
+function novaArea(){
+  const sel=document.getElementById('areaSel');if(!sel)return;
+  const inp=document.createElement('input');
+  inp.type='text';inp.placeholder='Nome da nova área';
+  inp.setAttribute('data-k','area');inp.id='areaSel';inp.style.flex='1';
+  sel.replaceWith(inp);inp.focus();
+}
+function collect(){
+  const r=JSON.parse(JSON.stringify(current));
+  document.querySelectorAll('#dBody [data-k]').forEach(el=>{r[el.dataset.k]=el.value.trim?el.value.trim():el.value;});
+  r.responsavelSolucao=canonName(r.responsavelSolucao);
+  if(document.querySelectorAll('#dBody [data-imp]').length)
+    r.impacto=[...document.querySelectorAll('#dBody [data-imp]:checked')].map(e=>e.dataset.imp);
+  const depEl=document.querySelector('#dBody [data-dep]');
+  if(depEl)r.depende=depEl.value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+  return r;
+}
+const LBL={titulo:'Título',descricao:'Status',especialista:'Especialista',area:'Área',tipo:'Tipo',prioridade:'Prioridade',urgencia:'Urgência',status:'Situação',responsavelSolucao:'Responsável',empresa:'Empresa',pessoa:'Pessoa',disciplina:'Disciplina',meta:'Meta',marco:'Marco',atividade:'Atividade',dataCriacao:'Data criação',dataPrevista:'Prazo',dataReal:'Data real',impactoDesc:'Desc. impacto',proximaAcao:'Próxima ação',observacoes:'Observações',comentarios:'Comentários'};
+function diffHist(o,n){const ev=[];for(const k in LBL){if((o[k]||'')!==(n[k]||''))ev.push(`${LBL[k]}: "${o[k]||'—'}" → "${n[k]||'—'}"`);}
+  if(o.impacto.join(',')!==n.impacto.join(','))ev.push(`Impacto: ${n.impacto.join(', ')||'nenhum'}`);
+  if(o.depende.join(',')!==n.depende.join(','))ev.push(`Dependências: ${n.depende.join(', ')||'nenhuma'}`);return ev;}
+function saveRec(){
+  const upd=collect();
+  const isNew=!R.some(r=>r.id===upd.id);
+  if(!upd.titulo){showToast('Informe ao menos o título.');return;}
+  if(isNew&&(!upd.area||!upd.dataPrevista)){showToast('Nova restrição: Título, Área e Prazo são obrigatórios. O resto é opcional.');return;}
+  const invalid=upd.depende.filter(d=>d!==upd.id&&!R.some(r=>r.id===d));
+  if(invalid.length)showToast('Atenção: dependências não encontradas ('+invalid.join(', ')+') — salvas mesmo assim.',null,null,6000);
+  const idx=R.findIndex(r=>r.id===upd.id);
+  if(idx>=0){
+    const ev=diffHist(R[idx],upd);
+    if(ev.length)upd.historico.push({data:hoje(),texto:ev.join(' · ')});
+    if(upd.status==='Resolvida'&&!upd.dataReal){upd.dataReal=hoje();upd.historico.push({data:hoje(),texto:'Marcada como Resolvida'});}
+    upd.inferido=[];
+    R[idx]=upd;
+  }else{upd.historico.push({data:hoje(),texto:'Restrição criada manualmente'});R.push(upd);}
+  state.restricoes=R;recalcBloqueia();save();refreshAll();
+  current=JSON.parse(JSON.stringify(upd));editing=false;renderDrawer();
+}
+let delArmed=false,delTimer=null;
+function delRec(){
+  const b=document.getElementById('btnDel');
+  if(!delArmed){
+    delArmed=true;
+    if(b){b.textContent='Confirmar exclusão';b.style.background='var(--crit)';b.style.color='#fff';b.style.borderColor='var(--crit)';}
+    clearTimeout(delTimer);
+    delTimer=setTimeout(()=>{delArmed=false;const x=document.getElementById('btnDel');
+      if(x){x.textContent='Excluir';x.style.background='';x.style.color='';x.style.borderColor='';}},4000);
+    return;
+  }
+  delArmed=false;clearTimeout(delTimer);
+  const id=current.id;
+  R=R.filter(r=>r.id!==id);state.restricoes=R;recalcBloqueia();save();refreshAll();closeDrawer();
+  showToast(id+' excluída definitivamente.');
+}
+
+let toastTimer=null,toastAction=null;
+function showToast(msg,btnLabel,action,ms){
+  const t=document.getElementById('toast'),b=document.getElementById('toastBtn');
+  document.getElementById('toastMsg').textContent=msg;
+  toastAction=action||null;
+  if(btnLabel&&action){b.textContent=btnLabel;b.style.display='inline-block';}else{b.style.display='none';}
+  t.style.display='flex';
+  clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,ms||5000);
+}
+function hideToast(){const t=document.getElementById('toast');if(t)t.style.display='none';toastAction=null;}
+document.getElementById('toastBtn').onclick=e=>{e.stopPropagation();if(toastAction)toastAction();hideToast();};
+function concluir(id,ev){if(ev&&ev.stopPropagation)ev.stopPropagation();
+  const r=R.find(x=>x.id===id);if(!r)return;
+  r.concluida=true;r.dataConclusao=hoje();
+  if(r.status!=='Resolvida'&&r.status!=='Cancelada')r.status='Resolvida';
+  if(!r.dataReal)r.dataReal=hoje();
+  r.historico.push({data:hoje(),texto:'Concluída (OK) e arquivada'});
+  recalcBloqueia();save();refreshAll();
+  if(current&&current.id===id){current=JSON.parse(JSON.stringify(r));editing=false;renderDrawer();}
+  showToast(id+' concluída e arquivada.','Desfazer',()=>resgatar(id),6000);
+}
+function resgatar(id){const r=R.find(x=>x.id===id);if(!r)return;
+  r.concluida=false;r.dataConclusao='';
+  r.historico.push({data:hoje(),texto:'Resgatada do arquivo — retornou ao quadro'});
+  recalcBloqueia();save();refreshAll();
+  if(current&&current.id===id){current=JSON.parse(JSON.stringify(r));renderDrawer();}
+}
+function concluirCurrent(){if(current)concluir(current.id,null);}
+function resgatarCurrent(){if(current)resgatar(current.id);}
+function renderArquivo(){
+  const q=(document.getElementById('faBusca').value||'').toLowerCase();
+  const list=R.filter(r=>r.concluida&&(!q||(r.titulo+' '+r.area+' '+r.id+' '+r.especialista).toLowerCase().includes(q)))
+    .sort((a,b)=>(b.dataConclusao||'').localeCompare(a.dataConclusao||''));
+  document.getElementById('faCount').textContent=list.length+' concluídas';
+  document.getElementById('archBadge').textContent=R.filter(r=>r.concluida).length;
+  document.getElementById('archive').innerHTML=list.length?'<div class="arch-grid">'+list.map(r=>{
+    const cls=TIPO_CLS[r.tipo];
+    return '<div class="arch '+cls+'">'
+      +'<div class="atop"><span style="font-family:var(--mono);font-size:10px;font-weight:600">'+r.id+'</span>'
+      +'<span style="font-weight:700;font-size:10px;text-transform:uppercase">'+TIPO_LAB[r.tipo]+'</span></div>'
+      +'<div class="abody"><div class="att">'+esc(r.titulo)+'</div>'
+      +'<div class="adate">'+esc(r.area)+' · '+esc(r.especialista)+'</div>'
+      +'<div class="adate">✓ Concluída em '+(r.dataConclusao||'—')+'</div>'
+      +'<div class="abtns"><button class="btn" onclick="openDrawer(\''+r.id+'\')">Ver ficha</button>'
+      +'<button class="btn primary" onclick="resgatar(\''+r.id+'\')">Resgatar</button></div>'
+      +'</div></div>';
+  }).join('')+'</div>':'<p style="color:var(--ink-2)">Nenhuma pendência concluída ainda. Use o botão ✓ no topo dos cards.</p>';
+}
+function espOfArea(area){const al=(area||'').trim().toLowerCase();
+  for(const[e,list]of Object.entries(state.especialistas||{})){if((list||[]).some(x=>(''+x).toLowerCase()===al))return e;}
+  const ex=R.find(r=>(r.area||'').toLowerCase()===al);return ex?ex.especialista:'';}
+function quickAdd(){
+  const t=v('qaTitulo').trim(),a=v('qaArea').trim(),tp=v('qaTipo'),p=v('qaPrazo');
+  if(!t||!a||!p){showToast('Cadastro rápido: preencha Título, Área e Prazo.');return;}
+  const rec=newRecord();rec.titulo=t;rec.area=a;rec.tipo=tp;rec.dataPrevista=p;
+  rec.especialista=espOfArea(a)||'A definir';
+  rec.historico=[{data:hoje(),texto:'Cadastro rápido (campo/reunião)'}];
+  R.push(rec);state.restricoes=R;recalcBloqueia();save();refreshAll();
+  ['qaTitulo','qaArea','qaPrazo'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('qaTitulo').focus();
+}
+document.getElementById('qaTitulo').addEventListener('keydown',e=>{if(e.key==='Enter')quickAdd();});
+['fhEsp','fhTipo','fhMeta','fhResp','fhPri','fhBusca'].forEach(id=>document.getElementById(id).oninput=renderHoje);
+function hojeBlock(titulo,lista,verTodas,vazio){
+  return `<div class="card"><div class="hoje-head"><h3 style="margin:0">${titulo} <span class="badge">${lista.length}</span></h3>
+    <span class="more" onclick='goFilter(${JSON.stringify(verTodas)})'>ver todas →</span></div>
+    ${lista.length?'<div class="stack" style="display:flex;flex-direction:column;gap:8px">'+lista.slice(0,10).map(ticketHTML).join('')+(lista.length>10?'<p class="hoje-empty">+ '+(lista.length-10)+' restantes — use "ver todas"</p>':'')+'</div>':'<p class="hoje-empty">'+vazio+'</p>'}
+  </div>`;
+}
+function diasAte(r){if(!r.dataPrevista)return null;return Math.ceil((new Date(r.dataPrevista)-new Date(hoje()))/864e5);}
+function readFHoje(){return{esp:v('fhEsp'),tipo:v('fhTipo'),meta:v('fhMeta'),resp:v('fhResp'),pri:v('fhPri'),busca:v('fhBusca')};}
+function clearFHoje(){['fhEsp','fhTipo','fhMeta','fhResp','fhPri'].forEach(i=>document.getElementById(i).value='');document.getElementById('fhBusca').value='';renderHoje();}
+function renderHoje(){
+  const f=readFHoje();
+  const AT=applyF({esp:f.esp,tipo:f.tipo,meta:f.meta,status:'',pri:f.pri,resp:f.resp,busca:f.busca})
+    .filter(r=>r.status!=='Resolvida'&&r.status!=='Cancelada');
+  const byPrazo=(x,y)=>(diasAte(x)-diasAte(y))||(critRank(x)-critRank(y));
+  const venc=AT.filter(r=>{const d=diasAte(r);return d!==null&&d<=0;}).sort(byPrazo);
+  const d7=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=1&&d<=7;}).sort(byPrazo);
+  const d15=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=8&&d<=15;}).sort(byPrazo);
+  document.getElementById('hojeGrid').innerHTML=
+    hojeBlock('🔴 Vencidas / vencem hoje',venc,{view:'lista',sort:'alerta'},'Nada vencido — quadro sob controle.')+
+    hojeBlock('🟠 Vencem em até 7 dias',d7,{view:'lista',sort:'dataPrevista'},'Nenhum vencimento nos próximos 7 dias.')+
+    hojeBlock('🟡 Vencem em 8 a 15 dias',d15,{view:'lista',sort:'dataPrevista'},'Nenhum vencimento na janela de 8 a 15 dias.');
+}
+function dragR(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
+function dragArea(ev,area,esp){ev.stopPropagation();
+  ev.dataTransfer.setData('text/plain','AREA::'+area+'::'+esp);ev.dataTransfer.effectAllowed='move';}
+function transferArea(area,fromEsp,toEsp){
+  if(fromEsp===toEsp){showToast('A área '+area+' já está com '+toEsp+'.');return;}
+  const moved=R.filter(r=>!r.concluida&&r.area===area&&r.especialista===fromEsp);
+  if(!moved.length)return;
+  moved.forEach(r=>{
+    r.historico.push({data:hoje(),texto:'Área transferida em bloco · Especialista: "'+fromEsp+'" -> "'+toEsp+'"'});
+    r.especialista=toEsp;
+  });
+  const al=area.toLowerCase();
+  Object.keys(state.especialistas||{}).forEach(e=>{
+    state.especialistas[e]=(state.especialistas[e]||[]).filter(x=>(''+x).toLowerCase()!==al);
+  });
+  if(!state.especialistas[toEsp])state.especialistas[toEsp]=[];
+  state.especialistas[toEsp].push(area);
+  save();refreshAll();
+  showToast('Área '+area+' transferida para '+toEsp+' ('+moved.length+' restrições).');
+}
+function dropR(ev,area,espec){ev.preventDefault();
+  const raw=ev.dataTransfer.getData('text/plain');
+  if(raw.startsWith('AREA::')){const p=raw.split('::');transferArea(p[1],p[2],espec);return;}
+  const id=raw,r=R.find(x=>x.id===id);if(!r)return;
+  const mud=[];
+  if(r.area!==area){mud.push('Área: "'+r.area+'" -> "'+area+'"');r.area=area;}
+  if(r.especialista!==espec){mud.push('Especialista: "'+r.especialista+'" -> "'+espec+'"');r.especialista=espec;}
+  if(!mud.length)return;
+  r.historico.push({data:hoje(),texto:'Movida no quadro · '+mud.join(' · ')});
+  save();refreshAll();showToast(id+' movida para '+area+' ('+espec+').');
+}
+function dropEsp(ev,espec){ev.preventDefault();
+  const raw=ev.dataTransfer.getData('text/plain');
+  if(raw.startsWith('AREA::')){const p=raw.split('::');transferArea(p[1],p[2],espec);return;}
+  const id=raw,r=R.find(x=>x.id===id);if(!r||r.especialista===espec)return;
+  r.historico.push({data:hoje(),texto:'Especialista: "'+r.especialista+'" -> "'+espec+'" (arrastado)'});
+  r.especialista=espec;save();refreshAll();
+  showToast(id+' transferida para '+espec+' (área mantida: '+r.area+').');
+}
+let qmId=null;
+function openQuick(id,ev){if(ev&&ev.stopPropagation)ev.stopPropagation();
+  qmId=id;const r=R.find(x=>x.id===id);if(!r)return;
+  const m=document.getElementById('qmenu');
+  document.getElementById('qmTit').textContent=id+' · atualização rápida';
+  document.getElementById('qmPrazo').value=r.dataPrevista||'';
+  document.getElementById('qmStatus').value=r.status;
+  document.getElementById('qmResp').value=r.responsavelSolucao||'';
+  document.getElementById('respDL').innerHTML=allResp().map(x=>`<option value="${esc(x)}">`).join('');
+  document.getElementById('qmAcao').value=r.proximaAcao||'';
+  m.style.display='block';
+  const x=Math.min(ev.clientX,window.innerWidth-260),y=Math.min(ev.clientY,window.innerHeight-250);
+  m.style.left=Math.max(8,x)+'px';m.style.top=Math.max(8,y)+'px';
+}
+function closeQuick(){document.getElementById('qmenu').style.display='none';qmId=null;}
+function applyQuick(){
+  const r=R.find(x=>x.id===qmId);if(!r){closeQuick();return;}
+  const p=v('qmPrazo'),s=v('qmStatus'),a=v('qmAcao').trim(),rs=canonName(v('qmResp'));const ev=[];
+  if((r.responsavelSolucao||'')!==rs){ev.push('Responsável: "'+(r.responsavelSolucao||'—')+'" -> "'+(rs||'—')+'"');r.responsavelSolucao=rs;}
+  if((r.dataPrevista||'')!==p){ev.push('Prazo: "'+(r.dataPrevista||'—')+'" -> "'+(p||'—')+'"');r.dataPrevista=p;}
+  if(r.status!==s){ev.push('Status: "'+r.status+'" -> "'+s+'"');r.status=s;
+    if(s==='Resolvida'&&!r.dataReal)r.dataReal=hoje();}
+  if((r.proximaAcao||'')!==a){ev.push('Próxima ação: "'+(a||'—')+'"');r.proximaAcao=a;}
+  if(ev.length){r.historico.push({data:hoje(),texto:'Atualização rápida · '+ev.join(' · ')});save();refreshAll();}
+  closeQuick();
+}
+document.addEventListener('click',e=>{const m=document.getElementById('qmenu');
+  if(m&&m.style.display==='block'&&!m.contains(e.target))closeQuick();});
+function exportJSON(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='data.json';a.click();}
+function importJSON(){document.getElementById('fileInput').click();}
+document.getElementById('fileInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);d.restricoes=(d.restricoes||[]).map(migrate);
+    state=d;R=state.restricoes;recalcBloqueia();save();refreshAll();showToast('Importado: '+R.length+' restrições.');}
+    catch(err){showToast('Arquivo inválido.');}};rd.readAsText(f);e.target.value='';};
+let resetArmed=false,resetTimer=null;
+function resetData(){
+  if(!resetArmed){resetArmed=true;
+    showToast('Isso descarta TODAS as alterações locais. Clique em "Restaurar leitura" novamente em até 5s para confirmar.',null,null,5000);
+    clearTimeout(resetTimer);resetTimer=setTimeout(()=>resetArmed=false,5000);return;}
+  resetArmed=false;try{localStorage.removeItem(KEY);}catch(e){}
+  state=seedState();R=state.restricoes;recalcBloqueia();refreshAll();
+  showToast('Quadro restaurado para a leitura original das fotos.');
+}
+
+/* ============================ MOTOR DE ANÁLISE PMO ============================ */
+function pmoData(){
+  const AT=R.filter(r=>!r.concluida&&r.status!=='Cancelada');
+  const done=R.filter(r=>r.concluida||r.status==='Resolvida');
+  const eng=AT.filter(r=>r.tipo==='engenharia'),obra=AT.filter(r=>isObra(r.tipo)),sup=AT.filter(r=>r.tipo==='suprimentos');
+  const vencidas=AT.filter(r=>alertaOf(r).cls==='s-crit');
+  const proximas=AT.filter(r=>['s-urg','s-warn'].includes(alertaOf(r).cls));
+  const semPrazo=AT.filter(r=>!r.dataPrevista);
+  const semResp=AT.filter(r=>!canonName(r.responsavelSolucao));
+  const seg=AT.filter(r=>r.impacto&&r.impacto.includes('Seguranca'));
+  const ativoDep=id=>{const x=R.find(y=>y.id===id);return x&&!x.concluida&&x.status!=='Resolvida'&&x.status!=='Cancelada';};
+  const bloqueadasObra=obra.filter(r=>r.depende.some(ativoDep));
+  const obraLivre=obra.filter(r=>!r.depende.some(ativoDep));
+  // efeito cascata (quantas destrava, direto+indireto)
+  const cascata=id=>{const seen=new Set();(function w(x){(bloqueia[x]||[]).forEach(b=>{if(!seen.has(b)){seen.add(b);w(b);}});})(id);return seen.size;};
+  const gargalos=AT.map(r=>({r,n:cascata(r.id)})).filter(o=>o.n>0).sort((a,b)=>b.n-a.n);
+  // caminho critico: maior cadeia de dependencias ativas
+  const memo={};
+  function chain(id){if(memo[id])return memo[id];const r=R.find(x=>x.id===id);
+    if(!r||!r.depende.length){return memo[id]={len:1,path:[id]};}
+    let best={len:0,path:[]};
+    r.depende.forEach(d=>{if(ativoDep(d)){const c=chain(d);if(c.len>best.len)best=c;}});
+    return memo[id]={len:best.len+1,path:[...best.path,id]};}
+  let critPath={len:0,path:[]};
+  AT.forEach(r=>{const c=chain(r.id);if(c.len>critPath.len)critPath=c;});
+  // concentracoes
+  const by=(arr,key)=>{const m={};arr.forEach(r=>{const k=(typeof key==='function'?key(r):r[key])||'—';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const porEsp=by(AT,'especialista'),porArea=by(AT,'area'),porMeta=by(AT,'meta'),porTipo=by(AT,'tipo');
+  const porResp=by(AT.filter(r=>canonName(r.responsavelSolucao)),r=>canonName(r.responsavelSolucao));
+  // sobrecarga responsavel: media + desvio simples
+  const respLoads=porResp.map(([k,v])=>v);
+  const respMax=porResp[0]||['—',0];
+  // tendencia: historico ultimos 14 vs 14 dias anteriores (criacoes) + resolucoes
+  const today=new Date(hoje());
+  const dd=(dias)=>{const x=new Date(today);x.setDate(x.getDate()-dias);return x.toISOString().slice(0,10);};
+  let critNoPrazo=0; // % obra pronta
+  const pctObraPronta=obra.length?Math.round(obraLivre.length/obra.length*100):0;
+  const pctSemPrazo=AT.length?Math.round(semPrazo.length/AT.length*100):0;
+  const pctSemResp=AT.length?Math.round(semResp.length/AT.length*100):0;
+  const pctVenc=AT.length?Math.round(vencidas.length/AT.length*100):0;
+  const totalGer=AT.length+done.length;
+  const pctConcl=totalGer?Math.round(done.length/totalGer*100):0;
+  const depCadastradas=AT.filter(r=>r.depende.length).length;
+  const pctDep=AT.length?Math.round(depCadastradas/AT.length*100):0;
+  // ---------- ÍNDICE DE SAÚDE (0-100) ----------
+  // pesos: prazo(25) engenharia-gargalo(20) responsaveis(15) risco/seguranca(15) planejamento-dados(15) execucao(10)
+  const s_prazo=100-pctVenc*1.2-pctSemPrazo*0.6;                 // prazos definidos e cumpridos
+  const s_eng=100-(AT.length?eng.length/AT.length*100:0)*0.8;     // dependencia de engenharia
+  const s_resp=100-pctSemResp;                                    // accountability
+  const s_risco=100-Math.min(100,seg.length*12+vencidas.length*4);
+  const s_plan=100-(100-pctDep)*0.7;                             // maturidade de rede de dependencias
+  const s_exec=pctConcl;                                          // entrega
+  const clamp=x=>Math.max(0,Math.min(100,x));
+  const comp=[['Prazo & aderência',clamp(s_prazo),25],['Dependência de Engenharia',clamp(s_eng),20],
+    ['Accountability (responsáveis)',clamp(s_resp),15],['Risco & Segurança',clamp(s_risco),15],
+    ['Maturidade do planejamento',clamp(s_plan),15],['Execução (entrega)',clamp(s_exec),10]];
+  const health=Math.round(comp.reduce((a,[,v,w])=>a+v*w,0)/comp.reduce((a,[,,w])=>a+w,0));
+  return {AT,done,eng,obra,sup,vencidas,proximas,semPrazo,semResp,seg,bloqueadasObra,obraLivre,gargalos,critPath,
+    porEsp,porArea,porMeta,porTipo,porResp,respMax,pctObraPronta,pctSemPrazo,pctSemResp,pctVenc,pctConcl,pctDep,
+    depCadastradas,comp,health};
+}
+function healthClass(h){return h>=75?['SAUDÁVEL','#15803d','#d7f0df']:h>=55?['ATENÇÃO','#8a5a00','#fef0cf']:h>=35?['CRÍTICO','#b5480a','#ffe2d1']:['EMERGÊNCIA','#a31414','#fdd9d9'];}
+function pluralR(n){return n+' restriç'+(n===1?'ão':'ões');}
+
+function renderPMO(){
+  const d=pmoData(),el=document.getElementById('pmo');
+  if(!d.AT.length){el.innerHTML='<div class="pmo-sec"><h3>Análise Executiva PMO</h3><p class="sub">Sem restrições ativas para analisar.</p></div>';return;}
+  const [hc,hcol,hbg]=healthClass(d.health);
+  const pctEng=Math.round(d.eng.length/d.AT.length*100);
+  // gauge svg
+  const circ=2*Math.PI*74,off=circ*(1-d.health/100);
+  const gaugeCol=d.health>=75?'#22c55e':d.health>=55?'#f59e0b':d.health>=35?'#ea6d0b':'#dc2626';
+
+  /* ---------- Resumo Executivo (diagnóstico dinâmico) ---------- */
+  const espTop=d.porEsp[0]||['—',0], areaTop=d.porArea[0]||['—',0];
+  const diag=`No momento o empreendimento acumula <b>${pluralR(d.AT.length)} ativas</b>, das quais <b>${d.eng.length} de engenharia (${pctEng}%)</b>, ${d.obra.length} de obra e ${d.sup.length} de suprimentos. `+
+    `${d.pctSemPrazo>50?`A ausência de datas em <b>${d.pctSemPrazo}% dos itens</b> impede o controle de prazo e cega o sistema de alertas — este é o achado mais grave da auditoria. `:`${d.vencidas.length} itens estão vencidos e ${d.proximas.length} vencem em até 7 dias. `}`+
+    `A carteira está fortemente concentrada em <b>${esc(espTop[0])}</b> (${espTop[1]} itens) e na área <b>${esc(areaTop[0])}</b> (${areaTop[1]}). `+
+    `Apenas <b>${d.pctObraPronta}% das frentes de obra</b> estão prontas para executar; o restante aguarda engenharia/suprimentos de terceiros. `+
+    `Com ${d.pctDep}% das restrições tendo dependências mapeadas, ${d.pctDep<40?'a rede de precedência ainda é imatura, subestimando o caminho crítico real.':'a rede de precedência já permite leitura de caminho crítico.'}`;
+
+  /* ---------- Auditoria de planejamento (achados) ---------- */
+  const crit=[];
+  if(d.pctSemPrazo>40)crit.push(['alta','Planejamento sem baseline de prazo',
+    `<b>${d.semPrazo.length} de ${d.AT.length} restrições (${d.pctSemPrazo}%)</b> não têm data prevista de eliminação. <b>Causa:</b> cadastro de campo sem compromisso de data. <b>Consequência:</b> impossível calcular atraso, curva de eliminação ou caminho crítico confiável; a gestão opera reativa. <b>Ação:</b> mutirão de datação nas próximas 48h, começando pelas ${d.eng.length} de engenharia que travam frentes.`]);
+  if(pctEng>=50)crit.push(['alta','Gargalo estrutural em Engenharia',
+    `<b>${pctEng}% da carteira é engenharia/projeto</b>. <b>Causa:</b> projetos não liberados represam bases, chumbadores e concretagens a jusante. <b>Consequência:</b> obra ociosa mesmo com efetivo disponível; risco de reprogramação em cascata. <b>Ação:</b> força-tarefa de aprovação de projetos e priorização dos pacotes que liberam o maior número de frentes.`]);
+  if(d.pctSemResp>30)crit.push(['media','Baixa accountability',
+    `<b>${d.pctSemResp}% das restrições não têm responsável pela solução</b>. <b>Consequência:</b> pendências sem dono não avançam e diluem a cobrança. <b>Ação:</b> atribuir responsável a todas as críticas ainda esta semana; item sem dono não deve entrar em ata.`]);
+  if(d.pctDep<40)crit.push(['media','Rede de dependências imatura',
+    `Somente <b>${d.pctDep}%</b> das restrições têm precedência cadastrada. <b>Consequência:</b> o caminho crítico e o efeito-cascata estão subestimados; decisões de sequenciamento ficam no empirismo. <b>Ação:</b> mapear dependência projeto→execução por área (padrão azul→rosa).`]);
+  if(d.seg.length)crit.push(['alta','Itens com impacto em Segurança',
+    `<b>${pluralR(d.seg.length)}</b> impactam segurança (ex.: ${d.seg.slice(0,3).map(r=>r.id).join(', ')}). <b>Ação:</b> tratamento prioritário absoluto — segurança precede prazo e custo na hierarquia de decisão.`]);
+  if(d.vencidas.length)crit.push(['alta','Prazos já vencidos',
+    `<b>${pluralR(d.vencidas.length)}</b> vencidas (${d.pctVenc}% das com prazo). <b>Ação:</b> replanejar data e escalar as que impactam marcos contratuais.`]);
+  if(!crit.length)crit.push(['baixa','Planejamento sob controle','Nenhum desvio estrutural relevante identificado nos dados atuais. Manter cadência de atualização e datação.']);
+
+  /* ---------- Matriz de risco (prob x impacto) ---------- */
+  // probabilidade: vencida/urgente=alta, atencao=media, resto=baixa. impacto: seguranca ou libera frente ou caminho critico=alto
+  const probOf=r=>{const c=alertaOf(r).cls;return c==='s-crit'||c==='s-urg'?3:c==='s-warn'?2:1;};
+  const impOf=r=>{let s=1;const im=r.impacto||[];if(im.includes('Seguranca'))s=3;else if(im.includes('Liberacao de Frente')||im.includes('Caminho Critico')||bloqueia[r.id])s=Math.max(s,(bloqueia[r.id]&&bloqueia[r.id].length>1)?3:2);if(r.tipo==='engenharia')s=Math.max(s,2);return Math.min(3,s);};
+  const cellMap={};d.AT.forEach(r=>{const p=probOf(r),i=impOf(r);const k=p+'-'+i;(cellMap[k]=cellMap[k]||[]).push(r);});
+  const riskColor=(p,i)=>{const s=p*i;return s>=6?'rex':s>=4?'rhi':s>=2?'rmd':'rlo';};
+
+  /* ---------- Plano de recuperação (impacto x esforço) ---------- */
+  const esforcoOf=r=>{ // esforco proprio menor p/ obra livre; engenharia/suprim = depende de terceiro (maior)
+    if(r.tipo==='obra'&&!r.depende.some(x=>{const y=R.find(z=>z.id===x);return y&&!y.concluida;}))return 1;
+    if(r.tipo==='obra')return 2; if(r.tipo==='suprimentos')return 2; return 3;};
+  const impactoOf=r=>{const casc=bloqueia[r.id]?bloqueia[r.id].length:0;let s=1+casc;if((r.impacto||[]).includes('Seguranca'))s+=3;if((r.impacto||[]).includes('Liberacao de Frente'))s+=2;return s;};
+  const quad=r=>{const imp=impactoOf(r)>=3,esf=esforcoOf(r)>=3;return imp&&!esf?['q-win','Quick win']:imp&&esf?['q-big','Projeto estratégico']:!imp&&!esf?['q-fill','Preencher']:['q-hard','Reavaliar'];};
+  const plano=d.AT.map(r=>({r,imp:impactoOf(r),esf:esforcoOf(r),q:quad(r)}))
+    .sort((a,b)=> (a.q[0]==='q-win'?-1:1)-(b.q[0]==='q-win'?-1:1) || b.imp-a.imp || a.esf-b.esf).slice(0,10);
+
+  /* ---------- Tendência ---------- */
+  const trend=d.pctSemPrazo>60?['down','Piorando','A carteira cresce sem datas nem responsáveis — descontrole de baseline.']
+    :d.pctConcl>25?['up','Melhorando','Ritmo de eliminação consistente frente ao volume aberto.']
+    :['flat','Estável','Volume controlado, mas sem aceleração de eliminação.'];
+
+  /* ---------- Recomendações ---------- */
+  const recDir=[
+    `Instituir <b>baseline de prazo obrigatório</b>: nenhuma restrição entra no sistema sem data e responsável. Meta: zerar os ${d.semPrazo.length} itens sem prazo em 5 dias úteis.`,
+    `Criar <b>força-tarefa de Engenharia</b> para os ${d.eng.length} projetos represados — é a alavanca única de maior impacto no cronograma (${pctEng}% da carteira).`,
+    `Estabelecer <b>rotina semanal de restrições (Last Planner)</b> com foco em make-ready: só programar frentes livres, hoje apenas ${d.pctObraPronta}% da obra.`,
+    `Definir <b>gestão de terceiros por SLA</b> para engenharia e suprimentos, que representam ${100-Math.round(d.obra.length/d.AT.length*100)}% da carteira e não são ação própria da obra.`,
+    `Implantar <b>governança de dependências</b>: mapear precedências para expor o caminho crítico real (hoje só ${d.pctDep}% mapeado) e sustentar decisões de sequenciamento.`,
+  ];
+  const recGest=[
+    `Datar e atribuir responsável às <b>${d.eng.length} restrições de engenharia</b> antes da próxima reunião.`,
+    `Atacar os <b>top gargalos</b> ${d.gargalos.slice(0,3).map(g=>g.r.id).join(', ')||'(cadastrar dependências)'} — destravam o maior número de atividades.`,
+    `Resolver as <b>${pluralR(d.vencidas.length)} vencidas</b> ou repactuar data formalmente.`,
+    `Distribuir as <b>${d.semResp.length} restrições sem dono</b> entre a equipe, evitando sobrecarga de ${esc(d.respMax[0])}.`,
+    `Confirmar interpretação dos itens ainda marcados como "inferido" e completar campos mínimos.`,
+  ];
+  const escal=[
+    d.seg.length?`<b>Segurança:</b> ${pluralR(d.seg.length)} com impacto em segurança exigem decisão imediata da diretoria (${d.seg.slice(0,3).map(r=>r.id).join(', ')}).`:`<b>Baseline:</b> ausência de datas em ${d.pctSemPrazo}% da carteira é risco de governança que exige diretriz da diretoria.`,
+    d.critPath.len>=2?`<b>Caminho crítico:</b> cadeia de ${d.critPath.len} restrições encadeadas (${d.critPath.path.join(' → ')}) concentra risco de atraso sistêmico.`:`<b>Engenharia de terceiros:</b> ${pctEng}% da carteira depende de projetos externos — necessário comprometimento contratual de prazos com os projetistas.`,
+    `<b>Recursos:</b> concentração de ${espTop[1]} itens em ${esc(espTop[0])} sinaliza sobrecarga; avaliar reforço ou redistribuição de especialistas.`,
+  ];
+
+  /* ---------- Parecer executivo ---------- */
+  const parecer=`Trata-se de um empreendimento em fase de implantação cuja carteira de restrições revela um projeto <b>${d.health<55?'sob tensão de planejamento':'em estágio de estruturação'}</b>, com Índice de Saúde de <b>${d.health}/100 (${hc})</b>. `+
+    `O vetor dominante de risco é a <b>concentração em engenharia (${pctEng}%)</b>: enquanto os projetos não são liberados, as frentes de obra permanecem represadas — apenas ${d.pctObraPronta}% estão prontas para executar. `+
+    `${d.pctSemPrazo>50?`A imaturidade de baseline — <b>${d.pctSemPrazo}% dos itens sem data</b> — constitui a principal fragilidade de governança, pois inviabiliza a medição objetiva de desempenho e a antecipação de desvios. `:``}`+
+    `A tendência dos indicadores é <b>${trend[1].toLowerCase()}</b>. Caso nenhuma ação seja tomada, projeta-se propagação de atrasos pelas cadeias de dependência, ociosidade de mão de obra e pressão sobre marcos contratuais. `+
+    `Recomenda-se, com prioridade executiva, (i) instituir baseline obrigatória de prazo e responsável, (ii) constituir força-tarefa de engenharia sobre os pacotes de maior efeito-cascata e (iii) adotar rotina semanal de make-ready no modelo Last Planner. `+
+    `A adoção dessas medidas endereça diretamente as causas-raiz identificadas e é condição necessária para restabelecer a previsibilidade do cronograma.`;
+
+  /* ================= RENDER ================= */
+  const decis=[];
+  if(d.seg.length)decis.push(['','<b>Segurança:</b> '+pluralR(d.seg.length)+' com impacto em segurança ('+d.seg.slice(0,3).map(r=>r.id).join(', ')+') — decisão imediata da diretoria.']);
+  if(d.pctSemPrazo>50)decis.push(['','<b>Governança de prazo:</b> '+d.pctSemPrazo+'% da carteira sem data. Sem baseline não há controle de cronograma — exige diretriz para datação obrigatória.']);
+  if(pctEng>=50)decis.push(['w','<b>Engenharia de terceiros:</b> '+pctEng+'% da carteira depende de projetos externos. Requer comprometimento contratual de prazos com projetistas.']);
+  if(d.critPath.len>=2)decis.push(['w','<b>Caminho crítico:</b> cadeia de '+d.critPath.len+' restrições encadeadas ('+d.critPath.path.join(' → ')+') concentra risco de atraso sistêmico.']);
+  if(!decis.length)decis.push(['w','<b>Recursos:</b> concentração de '+espTop[1]+' itens em '+esc(espTop[0])+' sinaliza sobrecarga; avaliar redistribuição.']);
+  const decis3=decis.slice(0,3);
+
+  el.innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div><h2 style="font-size:17px;font-weight:700">Análise Executiva PMO</h2>
+    <p style="font-size:12px;color:var(--ink-2)">Gerado automaticamente · ${new Date().toLocaleDateString('pt-BR')} · ${d.AT.length} restrições ativas</p></div>
+    <button class="btn" onclick="window.print()">Imprimir / PDF</button>
+  </div>
+
+  <div class="pmo-hero">
+    <div class="gauge">
+      <svg viewBox="0 0 172 172" style="width:172px;height:172px;transform:rotate(-90deg)">
+        <circle cx="86" cy="86" r="74" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="14"/>
+        <circle cx="86" cy="86" r="74" fill="none" stroke="${gaugeCol}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg>
+      <div class="gv"><span class="gnum" style="color:${gaugeCol}">${d.health}</span>
+        <span class="glab">ÍNDICE DE SAÚDE</span>
+        <span class="gclass" style="background:${hbg};color:${hcol}">${hc}</span></div>
+    </div>
+    <div class="diag"><span class="tag">DIAGNÓSTICO EXECUTIVO</span>
+      <h2>Panorama do empreendimento</h2><p>${diag}</p></div>
+  </div>
+
+  <div class="exec-kpis">
+    <div class="exec-kpi ${pctEng>=50?'bad':''}" onclick='goFilter({view:"kanban",tipo:"engenharia"})' style="cursor:pointer"><div class="ev">${pctEng}%</div><div class="el2">Engenharia</div><div class="es">${d.eng.length} projetos represam a obra a jusante</div></div>
+    <div class="exec-kpi ${d.pctSemPrazo>40?'bad':'okk'}" onclick='goFilter({view:"lista",sort:"dataPrevista"})' style="cursor:pointer"><div class="ev">${d.pctSemPrazo}%</div><div class="el2">Sem prazo</div><div class="es">${d.semPrazo.length} itens sem baseline de data</div></div>
+    <div class="exec-kpi ${d.pctObraPronta<40?'warnk':'okk'}" onclick='goFilter({view:"kanban",tipo:"obra"})' style="cursor:pointer"><div class="ev">${d.pctObraPronta}%</div><div class="el2">Obra pronta</div><div class="es">frentes livres p/ executar (make-ready)</div></div>
+    <div class="exec-kpi ${d.vencidas.length?'bad':'okk'}" onclick='goFilter({view:"lista",sort:"alerta"})' style="cursor:pointer"><div class="ev">${d.vencidas.length}</div><div class="el2">Vencidas</div><div class="es">${d.proximas.length} vencem em até 7 dias</div></div>
+  </div>
+
+  <div class="pmo-sec" style="border-left:4px solid var(--crit)"><h3 style="color:var(--crit)">⚠ Decisões que exigem escalonamento imediato</h3>
+    ${decis3.map(x=>`<div class="decis ${x[0]}">${x[1]}</div>`).join('')}
+  </div>
+
+  <div class="pmo-grid" style="margin-bottom:12px">
+    <div class="pmo-sec" style="margin:0"><h3>Onde agir primeiro</h3><p class="sub">Top gargalos — destravam o maior número de atividades.</p>
+      ${d.gargalos.length?`<ul class="prank">${d.gargalos.slice(0,5).map(({r,n})=>`<li onclick="openDrawer('${r.id}')"><span class="pn"></span>
+        <div class="pbar"><div style="font-weight:600;font-size:13px">${r.id} · ${esc(r.titulo)}</div>
+        <div class="pmeta">${esc(r.area)} · ${TIPO_LAB[r.tipo]}</div></div><span class="pmeta">destrava ${n}</span></li>`).join('')}</ul>`
+        :`<p style="font-size:12.5px;color:var(--ink-2)">Ranking indisponível: só ${d.pctDep}% têm dependência cadastrada. Mapeie precedências (projeto→execução) para ativar.</p>`}
+    </div>
+    <div class="pmo-sec" style="margin:0"><h3>Tendência & previsão</h3>
+      <p style="margin:2px 0 10px"><span class="trend ${trend[0]}">${trend[0]==='up'?'▲':trend[0]==='down'?'▼':'▬'} ${trend[1]}</span></p>
+      <p style="font-size:12.5px;color:#3a4650;line-height:1.5;margin-bottom:12px">${trend[2]}</p>
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin-bottom:6px">Se nenhuma ação for tomada</p>
+      <ul style="list-style:none;font-size:12px;line-height:1.45;color:#3a4650">
+        <li style="padding:3px 0">▸ ${d.eng.length} projetos seguem represando frentes → ociosidade.</li>
+        <li style="padding:3px 0">▸ ${d.vencidas.length+d.proximas.length} itens migram para atraso consolidado.</li>
+        <li style="padding:3px 0">▸ Desvios só percebidos após o fato (${d.pctSemPrazo}% sem data).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pmo-grid" style="margin-bottom:12px">
+    <div class="pmo-sec" style="margin:0"><h3>5 Recomendações — Diretoria</h3>
+      <ul class="reclist">${recDir.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+    <div class="pmo-sec" style="margin:0"><h3>5 Ações — Gestores</h3>
+      <ul class="reclist gest">${recGest.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+  </div>
+
+  <details class="acc"><summary>Auditoria crítica do planejamento <span class="accsum">${crit.length} achados</span></summary>
+    <div class="accbody">${crit.map(([sev,t,b])=>`<div class="crit-item sev-${sev}"><div class="ct">${t}<span class="cbadge sev-${sev}">${sev.toUpperCase()}</span></div><div class="cbody">${b}</div></div>`).join('')}</div>
+  </details>
+
+  <details class="acc"><summary>Matriz de risco &amp; caminho crítico <span class="accsum">Prob × Impacto · cadeia de ${d.critPath.len||0}</span></summary>
+    <div class="accbody"><div class="pmo-grid">
+      <div><div class="rmatrix">
+        <div class="rc rh"></div><div class="rc rh">Imp. Baixo</div><div class="rc rh">Imp. Médio</div><div class="rc rh">Imp. Alto</div>
+        ${[3,2,1].map(p=>{const pl=p===3?'Prob. Alta':p===2?'Prob. Média':'Prob. Baixa';
+          return `<div class="rc rh rax">${pl}</div>`+[1,2,3].map(i=>{const list=cellMap[p+'-'+i]||[];
+            return `<div class="rc rcell ${riskColor(p,i)}" onclick='pmoRisk(${p},${i})'><span class="rn">${list.length}</span></div>`;}).join('');}).join('')}
+      </div></div>
+      <div>${d.critPath.len>=2?`<div class="cpath">${d.critPath.path.map((id,i)=>{const r=R.find(x=>x.id===id);
+        return (i?'<span class="carr">→</span>':'')+`<span class="cnode" onclick="openDrawer('${id}')">${id}</span>`;}).join('')}</div>
+        <p style="font-size:12px;color:var(--ink-2);margin-top:10px">Cadeia de <b>${d.critPath.len}</b> elos: atraso em qualquer um propaga até o fim.</p>`
+        :`<p style="font-size:12.5px;color:var(--ink-2)">Rede insuficiente (${d.pctDep}% mapeado). Cadastre precedências projeto→execução.</p>`}</div>
+    </div></div>
+  </details>
+
+  <details class="acc"><summary>Concentração & sobrecarga <span class="accsum">Especialista · Área · Meta · Responsável</span></summary>
+    <div class="accbody"><div class="pmo-grid">
+      ${[['Por Especialista',d.porEsp,'especialista'],['Por Área',d.porArea,'area'],['Por Meta',d.porMeta,'meta'],['Por Responsável',d.porResp,'resp']].map(([t,list,dim])=>{
+        const max=list.length?list[0][1]:1;
+        return `<div><p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin-bottom:8px">${t}</p><div class="heatgrid">${(list.slice(0,6)).map(([k,vv])=>{
+          const pct=vv/max*100,c=pct>75?'var(--crit)':pct>45?'var(--warn)':'var(--accent)';
+          const act=dim==='especialista'?`{view:"kanban",esp:${JSON.stringify(k)}}`:dim==='area'?`{view:"kanban",busca:${JSON.stringify(k)}}`:dim==='meta'?`{view:"kanban",meta:${JSON.stringify(k)}}`:`{view:"kanban",resp:${JSON.stringify(k)}}`;
+          return `<div class="heatrow" onclick='goFilter(${act})'><span class="hlab">${esc(k)}</span><div class="htrack"><div class="hfill" style="width:${pct}%;background:${c}"></div></div><span class="hn">${vv}</span></div>`;}).join('')||'<p style="font-size:12px;color:var(--ink-2)">Sem dados.</p>'}</div>
+        ${dim==='resp'&&d.respMax[1]>=5?`<p style="font-size:11px;color:var(--crit);margin-top:8px">⚠ ${esc(d.respMax[0])} concentra ${d.respMax[1]} itens.</p>`:''}</div>`;}).join('')}
+    </div></div>
+  </details>
+
+  <details class="acc"><summary>Plano de recuperação — Impacto × Esforço <span class="accsum">Quick wins primeiro</span></summary>
+    <div class="accbody"><table class="plan-tbl"><thead><tr><th>ID</th><th>Restrição</th><th>Área</th><th>Quadrante</th><th>Imp.</th></tr></thead><tbody>
+      ${plano.map(p=>`<tr onclick="openDrawer('${p.r.id}')" style="cursor:pointer">
+        <td style="font-family:var(--mono)">${p.r.id}</td><td>${esc(p.r.titulo)}</td>
+        <td style="color:var(--ink-2)">${esc(p.r.area)}</td>
+        <td><span class="q ${p.q[0]}">${p.q[1]}</span></td>
+        <td style="font-family:var(--mono);text-align:center">${p.imp}</td></tr>`).join('')}
+    </tbody></table></div>
+  </details>
+
+  <details class="acc"><summary>Composição do índice de saúde <span class="accsum">6 dimensões ponderadas</span></summary>
+    <div class="accbody"><div class="heatgrid">${d.comp.map(([l,vv,w])=>{const c=vv>=70?'var(--ok)':vv>=45?'var(--warn)':'var(--crit)';
+      return `<div class="heatrow"><span class="hlab" style="width:210px">${l}</span><div class="htrack"><div class="hfill" style="width:${vv}%;background:${c}"></div></div><span class="hn">${Math.round(vv)} · p${w}</span></div>`;}).join('')}</div></div>
+  </details>
+
+  <div class="parecer"><h3>PARECER EXECUTIVO</h3><p>${parecer}</p>
+    <div class="sig">PMO — Escritório de Gestão de Projetos · Índice de Saúde ${d.health}/100 (${hc}) · ${d.AT.length} ativas · ${d.done.length} concluídas</div></div>
+  `
+}
+function pmoRisk(p,i){ // filtra por criticidade aproximada abrindo a lista
+  goFilter({view:'lista',sort:'alerta'});
+}
+function refreshAll(){fillSelects();renderPMO();renderPainel();renderKanban();renderLista();renderArquivo();renderHoje();
+  document.getElementById('hmeta').textContent=R.filter(r=>!r.concluida).length+' no quadro · '+R.filter(r=>r.concluida).length+' concluídas';
+  document.getElementById('foot').textContent=(state.fonte||'')+' — dados salvos localmente. Use Exportar JSON para backup.';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+refreshAll();
+</script>
+</body>
+</html>
