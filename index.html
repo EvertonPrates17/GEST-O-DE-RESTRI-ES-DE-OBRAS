@@ -1691,8 +1691,9 @@ function concluir(id,ev){if(ev&&ev.stopPropagation)ev.stopPropagation();
   showToast(id+' concluída e arquivada.','Desfazer',()=>resgatar(id),6000);
 }
 function resgatar(id){const r=R.find(x=>x.id===id);if(!r)return;
-  r.concluida=false;r.dataConclusao='';
-  r.historico.push({data:hoje(),texto:'Resgatada do arquivo — retornou ao quadro'});
+  r.concluida=false;r.dataConclusao='';r.dataReal='';
+  if(r.status==='Resolvida'||r.status==='Cancelada')r.status='Em andamento';
+  r.historico.push({data:hoje(),texto:'Resgatada do arquivo — reaberta (Em andamento); volta a ser classificada pelo prazo'});
   recalcBloqueia();save();refreshAll();
   if(current&&current.id===id){current=JSON.parse(JSON.stringify(r));renderDrawer();}
 }
