@@ -1742,9 +1742,9 @@ function renderHoje(){
   const d7=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=1&&d<=7;}).sort(byPrazo);
   const d15=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=8&&d<=15;}).sort(byPrazo);
   document.getElementById('hojeGrid').innerHTML=
-    hojeBlock('🔴 Vencidas / vencem hoje',venc,{view:'lista',sort:'alerta'},'Nada vencido — quadro sob controle.')+
-    hojeBlock('🟠 Vencem em até 7 dias',d7,{view:'lista',sort:'dataPrevista'},'Nenhum vencimento nos próximos 7 dias.')+
-    hojeBlock('🟡 Vencem em 8 a 15 dias',d15,{view:'lista',sort:'dataPrevista'},'Nenhum vencimento na janela de 8 a 15 dias.');
+    hojeBlock('🔴 Vencidas / vencem hoje',venc,{view:'kanban'},'Nada vencido — quadro sob controle.')+
+    hojeBlock('🟠 Vencem em até 7 dias',d7,{view:'kanban'},'Nenhum vencimento nos próximos 7 dias.')+
+    hojeBlock('🟡 Vencem em 8 a 15 dias',d15,{view:'kanban'},'Nenhum vencimento na janela de 8 a 15 dias.');
 }
 function dragR(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
 function dragArea(ev,area,esp){ev.stopPropagation();
