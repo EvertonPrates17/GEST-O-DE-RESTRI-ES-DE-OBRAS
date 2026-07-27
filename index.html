@@ -334,7 +334,7 @@
   </section>
   <section class="view" id="kanban">
     <div class="filters">
-      <select id="fkEsp"></select><select id="fkTipo"></select><select id="fkMeta"></select><select id="fkStatus"></select><select id="fkPri"></select><select id="fkResp"></select>
+      <select id="fkEsp"></select><select id="fkTipo"></select><select id="fkMeta"></select><select id="fkStatus"></select><select id="fkPri"></select><select id="fkResp"></select><select id="fkPrazo"></select>
       <input id="fkBusca" placeholder="Buscar…">
       <button class="clear" onclick="clearF('fk')">Limpar</button>
       <button class="clear toggle" id="btnDetail" onclick="toggleDetail()">Detalhes</button>
@@ -1416,6 +1416,7 @@ function fillSelects(){
     meta=['Todas as metas',...allMetas()],st=['Todas as situações',...STATUSES],pri=['Todas as prioridades',...PRIOS];
   opt('fkEsp',esp);opt('flEsp',esp);opt('fkTipo',tipo,x=>TIPO_LAB[x]||x);opt('flTipo',tipo,x=>TIPO_LAB[x]||x);
   opt('fkMeta',meta);opt('flMeta',meta);opt('fkStatus',st);opt('flStatus',st);opt('fkPri',pri);opt('flPri',pri);
+  opt('fkPrazo',['Todos os prazos','__venc__','__d7__','__d15__','__semp__'],x=>({'__venc__':'🔴 Vencidas / hoje','__d7__':'🟠 Vencem em 7 dias','__d15__':'🟡 Vencem em 8–15 dias','__semp__':'⚪ Sem prazo'}[x]||x));
   const resp=['Todos os responsáveis',...allResp(),'__SEM__'];
   opt('fkResp',resp,x=>x==='__SEM__'?'— Sem responsável —':x);opt('flResp',resp,x=>x==='__SEM__'?'— Sem responsável —':x);
   const dl=document.getElementById('qaAreasDL');if(dl)dl.innerHTML=allAreas().map(a=>`<option value="${esc(a)}">`).join('');
@@ -1424,19 +1425,26 @@ function fillSelects(){
 }
 function opt(id,arr,lab){const el=document.getElementById(id);const cur=el.value;
   el.innerHTML=arr.map((x,i)=>`<option value="${i===0?'':esc(x)}">${lab?lab(x):esc(x)}</option>`).join('');el.value=cur;}
-function readF(p){return{esp:v(p+'Esp'),tipo:v(p+'Tipo'),meta:v(p+'Meta'),status:v(p+'Status'),pri:v(p+'Pri'),resp:v(p+'Resp'),busca:v(p+'Busca')};}
+function readF(p){const pz=document.getElementById(p+'Prazo');return{esp:v(p+'Esp'),tipo:v(p+'Tipo'),meta:v(p+'Meta'),status:v(p+'Status'),pri:v(p+'Pri'),resp:v(p+'Resp'),prazo:pz?pz.value:'',busca:v(p+'Busca')};}
 function matchResp(r,f){if(!f.resp)return true;
   const rr=canonName(r.responsavelSolucao);
   return f.resp==='__SEM__'?!rr:normKey(rr)===normKey(f.resp);}
 function v(id){return document.getElementById(id).value;}
-function applyF(f){return R.filter(r=>!r.concluida&&(!f.esp||r.especialista===f.esp)&&(!f.tipo||r.tipo===f.tipo)&&(!f.meta||r.meta===f.meta)&&(!f.status||r.status===f.status)&&(!f.pri||r.prioridade===f.pri)&&matchResp(r,f)&&(!f.busca||(r.titulo+' '+r.area+' '+r.id+' '+r.impacto.join(' ')).toLowerCase().includes(f.busca.toLowerCase())));}
-function clearF(p){['Esp','Tipo','Meta','Status','Pri','Resp'].forEach(s=>document.getElementById(p+s).value='');document.getElementById(p+'Busca').value='';renderKanban();renderLista();}
+function matchPrazo(r,f){if(!f.prazo)return true;const d=diasAte(r);
+  if(f.prazo==='__semp__')return d===null;
+  if(d===null)return false;
+  if(f.prazo==='__venc__')return d<=0;
+  if(f.prazo==='__d7__')return d>=1&&d<=7;
+  if(f.prazo==='__d15__')return d>=8&&d<=15;
+  return true;}
+function applyF(f){return R.filter(r=>!r.concluida&&(!f.esp||r.especialista===f.esp)&&(!f.tipo||r.tipo===f.tipo)&&(!f.meta||r.meta===f.meta)&&(!f.status||r.status===f.status)&&(!f.pri||r.prioridade===f.pri)&&matchResp(r,f)&&matchPrazo(r,f)&&(!f.busca||(r.titulo+' '+r.area+' '+r.id+' '+r.impacto.join(' ')).toLowerCase().includes(f.busca.toLowerCase())));}
+function clearF(p){['Esp','Tipo','Meta','Status','Pri','Resp','Prazo'].forEach(s=>{const el=document.getElementById(p+s);if(el)el.value='';});document.getElementById(p+'Busca').value='';renderKanban();renderLista();}
 function activateView(name){document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.v===name));document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===name));}
 function clkAttr(act){return "onclick='goFilter("+JSON.stringify(act).replace(/'/g,'&#39;')+")'";}
 function goFilter(o){
   if(o.view==='kanban'||o.view==='lista'){
     const p=o.view==='lista'?'fl':'fk';
-    ['esp','tipo','meta','status'].forEach(s=>{const el=document.getElementById(p+s.charAt(0).toUpperCase()+s.slice(1));if(el)el.value=(o[s]!=null?o[s]:'');});
+    ['esp','tipo','meta','status','pri','resp','prazo'].forEach(s=>{const el=document.getElementById(p+s.charAt(0).toUpperCase()+s.slice(1));if(el)el.value=(o[s]!=null?o[s]:'');});
     document.getElementById(p+'Busca').value=o.busca||'';
     if(o.sort){sortKey=o.sort;sortAsc=true;}
   }
@@ -1519,7 +1527,7 @@ function renderLista(){
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink-2)">${rel}</td></tr>`;}).join('');
 }
 document.querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;sortAsc=sortKey===k?!sortAsc:true;sortKey=k;renderLista();});
-['fkEsp','fkTipo','fkMeta','fkStatus','fkPri','fkResp','fkBusca'].forEach(id=>document.getElementById(id).oninput=renderKanban);
+['fkEsp','fkTipo','fkMeta','fkStatus','fkPri','fkResp','fkPrazo','fkBusca'].forEach(id=>document.getElementById(id).oninput=renderKanban);
 ['flEsp','flTipo','flMeta','flStatus','flPri','flResp','flBusca'].forEach(id=>document.getElementById(id).oninput=renderLista);
 document.getElementById('faBusca').oninput=renderArquivo;
 const esc=s=>(s==null?'':(''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
@@ -1742,9 +1750,9 @@ function renderHoje(){
   const d7=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=1&&d<=7;}).sort(byPrazo);
   const d15=AT.filter(r=>{const d=diasAte(r);return d!==null&&d>=8&&d<=15;}).sort(byPrazo);
   document.getElementById('hojeGrid').innerHTML=
-    hojeBlock('🔴 Vencidas / vencem hoje',venc,{view:'kanban'},'Nada vencido — quadro sob controle.')+
-    hojeBlock('🟠 Vencem em até 7 dias',d7,{view:'kanban'},'Nenhum vencimento nos próximos 7 dias.')+
-    hojeBlock('🟡 Vencem em 8 a 15 dias',d15,{view:'kanban'},'Nenhum vencimento na janela de 8 a 15 dias.');
+    hojeBlock('🔴 Vencidas / vencem hoje',venc,{view:'kanban',prazo:'__venc__'},'Nada vencido — quadro sob controle.')+
+    hojeBlock('🟠 Vencem em até 7 dias',d7,{view:'kanban',prazo:'__d7__'},'Nenhum vencimento nos próximos 7 dias.')+
+    hojeBlock('🟡 Vencem em 8 a 15 dias',d15,{view:'kanban',prazo:'__d15__'},'Nenhum vencimento na janela de 8 a 15 dias.');
 }
 function dragR(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
 function dragArea(ev,area,esp){ev.stopPropagation();
